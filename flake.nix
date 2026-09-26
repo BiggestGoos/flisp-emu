@@ -19,9 +19,7 @@
           pkgs = nixpkgs.legacyPackages."${system}";
         in
         {
-          default = pkgs.mkShell {
-            packages = with pkgs; [ haskell.compiler.ghc9124 ];
-          };
+          default = import ./shell.nix { inherit pkgs; };
         }
       );
     };
