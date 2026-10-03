@@ -61,7 +61,7 @@ library
     exposed-modules:  MyLib
 
     -- Modules included in this library but not exported.
-    other-modules:  Types.Bit Types.Bit.Type Types.Bit.Operations Types.Byte Types.Byte.Type Types.Byte.Operations Types.Bus Types.Register Types.Memory Types.Inputs ALU Datapath Counter Instructions ControlUnit
+    other-modules:  Types.Bit Types.Bit.Type Types.Bit.Operations Types.Byte Types.Byte.Type Types.Byte.Operations Types.Bus Types.Register Types.Memory Types.Inputs.Type Types.Inputs.Constants Types.Inputs ALU Datapath Counter Instructions ControlUnit
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
