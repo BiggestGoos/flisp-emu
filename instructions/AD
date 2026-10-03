@@ -1,0 +1,6 @@
+ADDA - Add data into register A:
+
+ADDA #Data ; im ; 96 ; 2 ; 4 ; A + Data -> A ; d, d, d, d
+1. LD_T; MR; INC_PC
+2. OE_A; LD_R; f3; f1; f0; LD_CC
+3. LD_A; OE_R; CLR_T; NF

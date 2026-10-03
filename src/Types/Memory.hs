@@ -27,3 +27,12 @@ write memory address Bit.One input =
     index = Byte.toInt address
   in
     V.unsafeUpd memory [(index, input)]
+
+fromList :: [Byte.Byte] -> Memory
+fromList list =
+  let
+    vec = case V.fromList list of
+      Nothing  -> Types.Memory.zero
+      Just vec' -> vec'
+  in
+    vec

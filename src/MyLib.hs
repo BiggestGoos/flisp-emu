@@ -1,13 +1,17 @@
-module MyLib
-(
-  --module Bit,
-  module Byte,
-  --module Register,
-  module Datapath,
-)
-where
+module MyLib where
 
---import Types.Bit as Bit
-import Types.Byte as Byte
---import Types.Register as Register
-import Datapath
+import qualified Types.Byte as Byte
+import qualified Types.Memory as Memory
+import qualified ControlUnit
+
+type FLISP = ControlUnit.ControlUnit
+
+flash :: [Int] -> FLISP
+flash input =
+  let
+    memory = Memory.fromList (map (\ int -> Byte.fromInt int) input)
+  in
+    ControlUnit.flash memory
+
+clock :: FLISP -> FLISP
+clock prev = ControlUnit.clock prev

@@ -24,8 +24,8 @@ data Datapath = Datapath {
   memory :: M.Memory
 } deriving (Eq, Show)
 
-defaultValue :: Datapath
-defaultValue =
+flash :: M.Memory -> Datapath
+flash memory =
   let
     zero = B.zero
   in Datapath {
@@ -39,71 +39,71 @@ defaultValue =
     reg_r  = zero,
     reg_cc = zero,
     reg_i  = zero,
-    memory = M.zero
+    memory = memory
   }
 
 clock :: Datapath -> I.Inputs -> Datapath
 clock
   (Datapath {
-    reg_a  = reg_a,
-    reg_t  = reg_t,
-    reg_x  = reg_x,
-    reg_y  = reg_y,
-    reg_pc = reg_pc,
-    reg_sp = reg_sp,
-    reg_ta = reg_ta,
-    reg_r  = reg_r,
-    reg_cc = reg_cc,
-    reg_i  = reg_i,
-    memory = memory
+    reg_a,
+    reg_t,
+    reg_x,
+    reg_y,
+    reg_pc,
+    reg_sp,
+    reg_ta,
+    reg_r,
+    reg_cc,
+    reg_i,
+    memory
   })
   (I.Inputs {
-    ld_a   = ld_a,
-    ld_t   = ld_t,
-    ld_x   = ld_x,
-    ld_y   = ld_y,
-    ld_pc  = ld_pc,
-    ld_sp  = ld_sp,
-    ld_ta  = ld_ta,
-    ld_r   = ld_r,
-    ld_cc  = ld_cc,
-    ld_i   = ld_i,
-    oe_a   = oe_a,
-    oe_x   = oe_x,
-    oe_y   = oe_y,
-    oe_pc  = oe_pc,
-    oe_sp  = oe_sp,
-    oe_r   = oe_r,
-    oe_cc  = oe_cc,
-    clr_t  = clr_t,
-    inc_pc = inc_pc,
-    inc_sp = inc_sp,
-    dec_sp = dec_sp,
-    f3     = f3,
-    f2     = f2,
-    f1     = f1,
-    f0     = f0,
-    mr     = mr,
-    mw     = mw,
-    g14    = g14,
-    g13    = g13,
-    g12    = g12,
-    g11    = g11,
-    g10    = g10,
-    g9     = g9,
-    g8     = g8,
-    g7     = g7,
-    g6     = g6,
-    g5     = g5,
-    g4     = g4,
-    g3     = g3,
-    g2     = g2,
-    g1     = g1,
-    g0     = g0
+    ld_a,
+    ld_t,
+    ld_x,
+    ld_y,
+    ld_pc,
+    ld_sp,
+    ld_ta,
+    ld_r,
+    ld_cc,
+    ld_i,
+    oe_a,
+    oe_x,
+    oe_y,
+    oe_pc,
+    oe_sp,
+    oe_r,
+    oe_cc,
+    clr_t,
+    inc_pc,
+    inc_sp,
+    dec_sp,
+    f3,
+    f2,
+    f1,
+    f0,
+    mr,
+    mw,
+    g14,
+    g13,
+    g12,
+    g11,
+    g10,
+    g9,
+    g8,
+    g7,
+    g6,
+    g5,
+    g4,
+    g3,
+    g2,
+    g1,
+    g0
   }) =
   let
 
-    pickSource s1 s0 v0 v1 v2 v3 = case (Bit.bitsToInt [ s0, s1 ]) of
+    pickSource s1 s0 v0 v1 v2 v3 = case (Bit.bitsToInt [ s1, s0 ]) of
       0 -> v0
       1 -> v1
       2 -> v2

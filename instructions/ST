@@ -1,0 +1,5 @@
+ST - Store register into memory
+
+STA Adr ; ab ; E1 ; 2 ; 3 ; A -> M(Adr) ; -, -, -, -
+1. MR; LD_TA; INC_PC
+2. g14; MW; OE_A; NF
