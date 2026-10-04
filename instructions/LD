@@ -1,4 +1,0 @@
-LD - Load register:
-
-LDA #Data ; im ; F0 ; 2 ; 2 ; Data -> A ; d, d, 0, -
-1. LD_A; MR; INC_PC; LD_CC; f3; f0; g5; g3; g2; NF
