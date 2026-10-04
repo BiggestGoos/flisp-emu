@@ -111,9 +111,12 @@ clock
       _ -> error "Something went wrong, should not be possible to get values other than [0..3] from a 2-bit value!"
 
     address =
-      if g14 == Bit.One
-      then reg_ta
-      else pickSource g13 g12 reg_pc reg_sp reg_y reg_x
+      let
+        add_t reg = fst $ B.add reg reg_t Bit.Zero
+      in
+        if g14 == Bit.One
+        then reg_ta
+        else pickSource g13 g12 reg_pc (add_t reg_sp) (add_t reg_y) (add_t reg_x)
 
     -- We cheat by seeing the bus as all zeroes when nothing is open, instead of undefined
     bus@(B.Byte _ _ _ bus_i bus_n bus_z bus_v bus_c) =
