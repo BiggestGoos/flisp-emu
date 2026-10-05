@@ -31,7 +31,9 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
     ab_snd load = [load, g14, mr]
     id_sp_snd load = [load, g12, mr]
 
-    adda_calc = [oe_a, ld_r, f3, f1, f0, ld_cc]
+    add_calc open = [open, ld_r, f3, f1, f0]
+
+    adda_calc = ld_cc:(add_calc oe_a)
     adca_calc = g1:adda_calc
 
     inc_calc open = [open, f3, f0, g0, ld_r, ld_cc, g3, g2]
@@ -63,6 +65,18 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
       0x08 -> case counter of
           4 -> ins $ dec_calc oe_a
           _ -> ins $ calc_end ld_a
+      0x10 -> case counter of
+          4 -> ins [dec_sp]
+          _ -> ins [oe_a, mw, g12, nf]
+      0x11 -> case counter of
+          4 -> ins [dec_sp]
+          _ -> ins [oe_x, mw, g12, nf]
+      0x14 -> case counter of
+          4 -> ins [ld_a, mr, g12]
+          _ -> ins [inc_sp, nf]
+      0x15 -> case counter of
+          4 -> ins [ld_x, mr, g12]
+          _ -> ins [inc_sp, nf]
       0x21 -> case counter of
           4 -> ins b_init
           5 -> ins b_calc
@@ -78,6 +92,8 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> ins $ ab_init
           5 -> ins $ g14:(dec_calc mr)
           _ -> ins $ g14:(calc_end mw)
+      0x90 -> ins [ld_x, mr, inc_pc, ld_cc, f3, f0, g5, g3, g2, nf]
+      0x92 -> ins [ld_sp, mr, inc_pc, ld_cc, f3, f0, g5, g3, g2, nf]
       0x95 -> case counter of
           4 -> ins $ im_init ld_t
           5 -> ins adca_calc
@@ -96,6 +112,17 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           5 -> ins $ id_sp_snd ld_t
           6 -> ins adca_calc
           _ -> ins $ calc_end ld_a
+      0xc2 -> case counter of
+          4 -> ins $ im_init ld_t
+          _ -> ins [ld_sp, mr, g13, g12, ld_cc, f3, f0, g5, g3, g2, nf]
+      0xcc -> case counter of
+          4 -> ins $ im_init ld_t
+          5 -> ins $ add_calc oe_x
+          _ -> ins $ calc_end ld_x
+      0xdc -> case counter of
+          4 -> ins $ im_init ld_t
+          5 -> ins $ add_calc oe_sp
+          _ -> ins $ calc_end ld_x
       0xe1 -> case counter of
           4 -> ins ab_init
           _ -> ins [g14, mw, oe_a, nf]
