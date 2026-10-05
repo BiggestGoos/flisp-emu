@@ -34,9 +34,12 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
     adda_calc = [oe_a, ld_r, f3, f1, f0, ld_cc]
     adca_calc = g1:adda_calc
 
+    inc_calc open = [open, f3, f0, g0, ld_r, ld_cc, g3, g2]
     dec_calc open = [open, f3, f1, ld_r, ld_cc, g3, g2]
 
     calc_end load = [load, oe_r, nf]
+
+    cmp_calc open = [open, f3, f2, g0, ld_cc]
 
     b_init = im_init ld_t
     b_calc = [oe_pc, f3, f1, f0, ld_r]
@@ -51,6 +54,12 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
       _ -> ins [mr, ld_i, inc_pc, clr_t]
     else case instruction of
       0x00 -> ins nop
+      0x05 -> case counter of
+          4 -> ins [ld_r, ld_cc]
+          _ -> ins $ calc_end ld_a
+      0x07 -> case counter of
+          4 -> ins $ inc_calc oe_a
+          _ -> ins $ calc_end ld_a
       0x08 -> case counter of
           4 -> ins $ dec_calc oe_a
           _ -> ins $ calc_end ld_a
@@ -91,4 +100,20 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> ins ab_init
           _ -> ins [g14, mw, oe_a, nf]
       0xf0 -> ins [ld_a, mr, inc_pc, ld_cc, f3, f0, g5, g3, g2, nf]
+
+      -- Temporary, disregard
+      --
+      -- MOVE #Data,Adr
+      0xdf -> case counter of
+          4 -> ins [mr, ld_ta, inc_pc]
+          5 -> ins [mr, ld_r, f3, f0, inc_pc]
+          _ -> ins [oe_r, mw, g14, nf]
+      0xef -> case counter of
+          4 -> ins [mr, ld_r, f3, f0, inc_pc]
+          5 -> ins [mr, ld_t, inc_pc]
+          6 -> ins $ cmp_calc oe_a
+          _ -> if z == Bit.One
+               then ins [oe_r, ld_pc, nf]
+               else ins nop
+
       _    -> ins []
