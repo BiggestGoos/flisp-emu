@@ -3,13 +3,15 @@ module Types.Memory where
 import Types.Byte as Byte
 import Types.Bit as Bit
 import Types.Bus as Bus
-import qualified Data.Vector.Sized as V
 
 type Address = Byte.Byte
-type Memory = V.Vector 256 Byte.Byte
+type Memory = [Byte.Byte]
+
+size :: Int
+size = 256
 
 zero :: Memory
-zero = V.replicate (Byte.fromInt 0x00) :: Memory
+zero = replicate size Byte.zero :: Memory
 
 read :: Memory -> Address -> Bit -> Bus.Bus
 read _ _ Bit.Zero = Nothing
@@ -18,21 +20,19 @@ read memory address Bit.One =
     index = Byte.toInt address
   in
     -- Index can't be outside the range of 0-255
-    Just $ V.unsafeIndex memory index
+    Just $ memory !! index
 
 write :: Memory -> Address -> Bit -> Byte -> Memory
 write memory _ Bit.Zero _ = memory
 write memory address Bit.One input =
   let
     index = Byte.toInt address
+    indexed_list = zip [0..size] memory
   in
-    V.unsafeUpd memory [(index, input)]
+    foldr (\ (i, cur) acc -> (if i == index then input else cur):acc) [] indexed_list
 
 fromList :: [Byte.Byte] -> Memory
 fromList list =
-  let
-    vec = case V.fromList list of
-      Nothing  -> Types.Memory.zero
-      Just vec' -> vec'
-  in
-    vec
+  if length list == size
+  then list
+  else replicate size Byte.zero :: Memory

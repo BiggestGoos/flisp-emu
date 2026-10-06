@@ -67,8 +67,7 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.20.2.0,
-                      vector-sized ^>=1.6.1
+    build-depends:    base ^>=4.20.2.0
 
     -- Directories containing source files.
     hs-source-dirs:   src
