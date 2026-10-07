@@ -1,0 +1,45 @@
+QAflisp - FLISP Absolute crossassembler, Version 1.3
+(c) GMV 1989-2025
+
+
+File: dancingLights.lst
+FB                      1. portFB: EQU $FB
+---- File: "dancingLights.sflisp"
+FC                      2. portFC: EQU $FC
+                        3. 
+10                      4.   ORG $10
+05                      5. length: EQU $5
+10                      6. patterns:
+10 55 AA CC 33 FF       7.   FCB $55,$AA,%11001100,%00110011,%11111111
+15 00                   8.   FCB %00000000
+                        9. 
+18                     10.   ORG $18
+18                     11. c:
+18 00                  12.   RMB 1
+                       13. 
+20                     14.   ORG $20
+20                     15. main:
+20 90 10               16.   LDX #patterns
+22 05                  17.   CLRA
+23 E1 18               18.   STA c
+                       19. 
+25                     20. loop:
+25 F4                  21.   LDA A,X ;M(a+x)
+26 E1 FC               22.   STA portFC
+                       23. 
+28 37 18               24.   INC c
+2A F1 18               25.   LDA c
+                       26. 
+2C                     27. if:
+2C 97 04               28.   CMPA #$4
+2E 2C 02               29.   BGT reset_c
+                       30. 
+30 21 F3               31.   BRA loop
+                       32. 
+32                     33. reset_c:
+32 05                  34.   CLRA
+33 E1 18               35.   STA c
+35 21 EE               36.   BRA loop
+                       37. 
+FF                     38.   ORG $FF
+FF 20                  39.   FCB $20    ;reset vector

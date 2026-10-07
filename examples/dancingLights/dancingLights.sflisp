@@ -1,0 +1,39 @@
+portFB: EQU $FB
+portFC: EQU $FC
+
+  ORG $10
+length: EQU $5
+patterns:
+  FCB $55,$AA,%11001100,%00110011,%11111111
+  FCB %00000000
+
+  ORG $18
+c:
+  RMB 1
+
+  ORG $20
+main:
+  LDX #patterns
+  CLRA
+  STA c
+
+loop:
+  LDA A,X ;M(a+x)
+  STA portFC
+
+  INC c
+  LDA c
+
+if:
+  CMPA #$4
+  BGT reset_c
+
+  BRA loop
+
+reset_c:
+  CLRA
+  STA c
+  BRA loop
+
+  ORG $FF
+  FCB $20    ;reset vector

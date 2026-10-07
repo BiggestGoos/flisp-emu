@@ -100,7 +100,8 @@ executable flisp-emu
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules:
+        Parse.S19
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -108,6 +109,7 @@ executable flisp-emu
     -- Other library packages from which modules are imported.
     build-depends:
         base ^>=4.20.2.0,
+        directory,
         flisp-emu
 
     -- Directories containing source files.
