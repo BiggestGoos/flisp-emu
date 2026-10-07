@@ -2,23 +2,23 @@ module Counter where
 
 import qualified Types.Bit as Bit
 
-data Counter = Counter { q3, q2, q1, q0 :: Bit.Bit } deriving (Eq, Show)
+data Counter = Counter { q3, q2, q1, q0 :: Bit.Bit } deriving (Ord, Eq, Show)
+
+bits :: Counter -> [Bit.Bit]
+bits (Counter q3 q2 q1 q0) = [q3, q2, q1, q0]
+
+unbits :: [Bit.Bit] -> Counter
+unbits (q3:q2:q1:q0:_) = Counter q3 q2 q1 q0
+unbits _ = error "Only lists of bits with length 4 or more can be converted to a counter!"
 
 reset :: Counter
 reset = Counter Bit.Zero Bit.Zero Bit.Zero Bit.Zero
 
 clock :: Counter -> Bit.Bit -> Counter
-clock (Counter q3 q2 q1 q0) nf =
+clock counter nf =
   let
-    value = Bit.bitsToInt [q3, q2, q1, q0]
-    newFetchPhase = 3
-    newBits =
-      if value >= newFetchPhase && nf == Bit.One
-      then Bit.bitsFromInt newFetchPhase 4
-      else Bit.bitsFromInt (value + 1) 4
-    nq3 = newBits !! 0
-    nq2 = newBits !! 1
-    nq1 = newBits !! 2
-    nq0 = newBits !! 3
+    newFetchPhase = Counter Bit.Zero Bit.Zero Bit.One Bit.One
   in
-    Counter nq3 nq2 nq1 nq0
+    if counter >= newFetchPhase && nf == Bit.One
+    then newFetchPhase
+    else unbits $ fst $ Bit.fullAdderBits (bits counter) (bits Counter.reset) Bit.One
