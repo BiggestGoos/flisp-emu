@@ -1,6 +1,6 @@
 module Main (main) where
 
-import MyLib
+import Flisp
 
 main :: IO ()
 main =
