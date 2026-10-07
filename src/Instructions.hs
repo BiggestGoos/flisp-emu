@@ -216,4 +216,4 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
                then ins [oe_r, ld_pc, nf]
                else ins nop
 
-      _    -> error $ "Instruction " ++ (showHex instruction "") ++ " is not implemented!" -- This should throw in interrupt, this is temporary
+      _    -> error $ "Instruction " ++ (showHex instruction "") ++ " is not implemented!" -- This should throw an interrupt, this is temporary

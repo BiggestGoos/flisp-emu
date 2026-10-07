@@ -1,0 +1,24 @@
+QAflisp - FLISP Absolute crossassembler, Version 1.3
+(c) GMV 1989-2025
+
+
+File: bitTest.lst
+00                      1.   ORG $0
+---- File: "bitTest.sflisp"
+22                      2. testA: EQU $22
+55                      3. testB: EQU $55
+C4                      4. testC: EQU $C4
+                        5. 
+20                      6. start: EQU $20
+                        7. 
+20                      8.   ORG start
+34                      9. accVal: EQU $34
+20 F0 34               10.   LDA #accVal
+22                     11. loop:
+22 98 22               12.   BITA #testA
+24 98 55               13.   BITA #testB
+26 98 C4               14.   BITA #testC
+28 21 F8               15.   BRA loop
+                       16. 
+FF                     17.   ORG $FF
+FF 20                  18.   FCB start

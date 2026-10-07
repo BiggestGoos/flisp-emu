@@ -1,0 +1,18 @@
+  ORG $0
+testA: EQU $22
+testB: EQU $55
+testC: EQU $C4
+
+start: EQU $20
+
+  ORG start
+accVal: EQU $34
+  LDA #accVal
+loop:
+  BITA #testA
+  BITA #testB
+  BITA #testC
+  BRA loop
+
+  ORG $FF
+  FCB start

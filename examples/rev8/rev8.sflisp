@@ -1,0 +1,50 @@
+  ORG $5
+
+val: FCB %10110011
+res: RMB 1
+
+start: EQU $20
+
+  ORG start
+  LDSP #start
+
+  LDX #val
+
+  BSR REV8
+
+  STA res
+
+  JMP end
+
+  ORG $30
+REV8:
+
+  LDA 0,X ; A = input
+  PSHA    ; Store input
+
+  LDA #8  ; # of iterations, bits
+  PSHA
+
+  CLRA
+  PSHA    ; Result (starts at 0)
+
+REV8_loop:
+
+  ; Get the rightmost bit
+  LSR 2,SP
+
+  ; Push that bit to the left
+  ROL 0,SP
+
+  DEC 1,SP
+  BNE REV8_loop
+
+  PULA
+
+  LEASP 2,SP
+  RTS
+
+end:
+
+  ORG $FF
+  FCB start
