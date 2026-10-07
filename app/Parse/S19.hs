@@ -1,5 +1,5 @@
 module Parse.S19 (parse) where
-import Data.List (sort, sortBy)
+import Data.List (sortBy)
 import Data.Char (toLower)
 
 -- https://en.eeworld.com.cn/news/mcu/eic543348.html

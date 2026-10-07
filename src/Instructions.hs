@@ -7,6 +7,8 @@ import qualified Counter
 
 import Types.Inputs.Constants
 
+import Numeric (showHex)
+
 create :: Counter.Counter -> Byte.Byte -> Byte.Byte -> (Bit.Bit, Inputs.Inputs)
 create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
   let
@@ -87,7 +89,17 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           _ -> if z == Bit.One
                then ins b_store
                else ins nop
+      0x2c -> case counter of
+          4 -> ins b_init
+          5 -> ins b_calc
+          _ -> if ((n `Bit.xor` v) `Bit.or` z) == Bit.Zero
+               then ins b_store
+               else ins nop
       0x33 -> ins [ld_pc, mr, nf]
+      0x37 -> case counter of
+          4 -> ins ab_init
+          5 -> ins $ g14:(inc_calc mr)
+          _ -> ins $ g14:(calc_end mw)
       0x38 -> case counter of
           4 -> ins $ ab_init
           5 -> ins $ g14:(dec_calc mr)
@@ -102,6 +114,9 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> ins $ im_init ld_t
           5 -> ins adda_calc
           _ -> ins $ calc_end ld_a
+      0x97 -> case counter of
+          4 -> ins $ im_init ld_t
+          _ -> ins $ nf:(cmp_calc oe_a)
       0xa5 -> case counter of
           4 -> ins ab_init
           5 -> ins $ ab_snd ld_t
@@ -127,6 +142,12 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> ins ab_init
           _ -> ins [g14, mw, oe_a, nf]
       0xf0 -> ins [ld_a, mr, inc_pc, ld_cc, f3, f0, g5, g3, g2, nf]
+      0xf1 -> case counter of
+          4 -> ins ab_init
+          _ -> ins [ld_a, mr, ld_cc, f3, f0, g5, g3, g2, g14, nf]
+      0xf4 -> case counter of
+          4 -> ins [oe_a, ld_t]
+          _ -> ins [ld_a, mr, ld_cc, f3, f0, g5, g3, g2, g13, g12, nf]
 
       -- Temporary, disregard
       --
@@ -143,4 +164,4 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
                then ins [oe_r, ld_pc, nf]
                else ins nop
 
-      _    -> ins []
+      _    -> error $ "Instruction " ++ (showHex instruction "") ++ " is not implemented!" -- This should throw in interrupt, this is temporary
