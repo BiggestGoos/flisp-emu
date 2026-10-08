@@ -1,0 +1,50 @@
+QAflisp - FLISP Absolute crossassembler, Version 1.3
+(c) GMV 1989-2025
+
+
+File: addBytes.lst
+05                      1.   ORG $05
+---- File: "addBytes.sflisp"
+                        2. 
+05                      3. bytes:
+05 C4 11                4.   FCB $c4,$11
+07                      5. result:
+07 00                   6.   RMB 1
+                        7. 
+20                      8.   ORG $20
+20 92 20                9.   LDSP #$20
+                       10. 
+22 90 05               11.   LDX #bytes
+                       12. 
+24 F0 FF               13.   LDA #$FF
+26 9F                  14.   EXG A,CC
+                       15. 
+27 20 07               16.   BSR ADD_BYTES
+                       17. 
+29 E1 07               18.   STA result
+                       19. 
+2B 33 FF               20.   JMP end
+                       21. 
+30                     22.   ORG $30
+30                     23. ADD_BYTES:
+30 01 01               24.   ANDCC #%00000001
+32 13                  25.   PSHC
+                       26. 
+33 F3 00               27.   LDA  0,X
+35 C6 01               28.   ADDA 1,X
+                       29. 
+37 10                  30.   PSHA
+                       31. 
+38 9F                  32.   EXG  A,CC
+39 99 FE               33.   ANDA #%11111110
+3B BA 01               34.   ORA  1,SP
+3D 9F                  35.   EXG  A,CC
+                       36. 
+3E 14                  37.   PULA
+                       38. 
+3F BE 01               39.   LEASP 1,SP
+41 43                  40.   RTS
+                       41. 
+FF                     42.   ORG $FF
+FF                     43. end:
+FF 20                  44.   FCB $20

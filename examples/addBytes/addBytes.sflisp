@@ -1,0 +1,44 @@
+  ORG $05
+
+bytes:
+  FCB $c4,$11
+result:
+  RMB 1
+
+  ORG $20
+  LDSP #$20
+
+  LDX #bytes
+
+  LDA #$FF
+  EXG A,CC
+
+  BSR ADD_BYTES
+
+  STA result
+
+  JMP end
+
+  ORG $30
+ADD_BYTES:
+  ANDCC #%00000001
+  PSHC
+
+  LDA  0,X
+  ADDA 1,X
+
+  PSHA
+
+  EXG  A,CC
+  ANDA #%11111110
+  ORA  1,SP
+  EXG  A,CC
+
+  PULA
+
+  LEASP 1,SP
+  RTS
+
+  ORG $FF
+end:
+  FCB $20
