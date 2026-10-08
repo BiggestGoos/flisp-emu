@@ -58,6 +58,10 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
       _ -> ins [mr, ld_i, inc_pc, clr_t]
     else case instruction of
       0x00 -> ins nop
+      0x01 -> case counter of
+          4 -> ins $ im_init ld_t
+          5 -> ins [oe_cc, f2, f1, f0, ld_r]
+          _ -> ins $ [g8, g6, g4, g2] ++ (calc_end ld_cc)
       0x05 -> case counter of
           4 -> ins [ld_r, ld_cc]
           _ -> ins $ calc_end ld_a
@@ -73,6 +77,9 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
       0x11 -> case counter of
           4 -> ins [dec_sp]
           _ -> ins [oe_x, mw, g12, nf]
+      0x13 -> case counter of
+          4 -> ins [dec_sp]
+          _ -> ins [oe_cc, mw, g12, nf]
       0x14 -> case counter of
           4 -> ins [ld_a, mr, g12]
           _ -> ins [inc_sp, nf]
@@ -128,6 +135,9 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> ins $ im_init ld_t
           5 -> ins [mr, g12, ld_r, f3, f2, f0, g1, ld_cc]
           _ -> ins $ g12:(calc_end mw)
+      0x69 -> case counter of
+          4 -> ins [oe_a, ld_t]
+          _ -> ins [mr, g13, g12, f3, f0, ld_cc, g5, g4, g3, g2, nf]
       0x90 -> ins [ld_x, mr, inc_pc, ld_cc, f3, f0, g5, g3, g2, nf]
       0x92 -> ins [ld_sp, mr, inc_pc, ld_cc, f3, f0, g5, g3, g2, nf]
       0x95 -> case counter of
@@ -148,6 +158,13 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> ins $ im_init ld_t
           5 -> ins [oe_a, ld_r, f2, f1, f0, ld_cc, g5, g3, g2]
           _ -> ins $ calc_end ld_a
+      0x9f -> case counter of
+          4 -> ins [oe_a, f3, f0, ld_r]
+          5 -> ins [ld_a, oe_cc]
+          _ -> ins [oe_r, ld_cc, g8, g6, g4, g2, nf]
+      0xa0 -> case counter of
+          4 -> ins ab_init
+          _ -> ins [ld_x, mr, ld_cc, f3, f0, g5, g3, g2, g14, nf]
       0xa5 -> case counter of
           4 -> ins ab_init
           5 -> ins $ ab_snd ld_t
@@ -173,6 +190,11 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
       0xc2 -> case counter of
           4 -> ins $ im_init ld_t
           _ -> ins [ld_sp, mr, g13, g12, ld_cc, f3, f0, g5, g3, g2, nf]
+      0xc6 -> case counter of
+          4 -> ins $ im_init ld_t
+          5 -> ins [ld_t, mr, g13, g12]
+          6 -> ins adda_calc
+          _ -> ins $ calc_end ld_a
       0xcc -> case counter of
           4 -> ins $ im_init ld_t
           5 -> ins $ add_calc oe_x
