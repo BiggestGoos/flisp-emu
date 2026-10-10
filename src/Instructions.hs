@@ -9,7 +9,9 @@ import Types.Inputs.Constants
 
 import Numeric (showHex)
 
-create :: Counter.Counter -> Byte.Byte -> Byte.Byte -> (Bit.Bit, Inputs.Inputs)
+type ControlSignals = (Bit.Bit, Inputs.Inputs)
+
+create :: Counter.Counter -> Byte.Byte -> Byte.Byte -> ControlSignals
 create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
   let
     instruction = Byte.toInt reg_i
