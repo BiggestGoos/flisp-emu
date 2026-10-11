@@ -6,7 +6,6 @@ File: morseTranslate.fmem
  # ClearAllRegisters
  #setMemory  FB=00
  #setMemory  FF=20
- #setMemory  FC=41
  #setMemory  20=90
  #setMemory  21=7F
  #setMemory  22=92

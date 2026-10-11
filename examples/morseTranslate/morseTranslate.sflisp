@@ -9,9 +9,6 @@ DelayC2: EQU $1 ;Ändra dem eventuellt i labbet så att fördröjnigen blir rimligt 
   ORG  $FF
   FCB  $20
 
-  ORG $FC
-  FCB $41
-
   ORG  $20
 
   LDX #MorseCode

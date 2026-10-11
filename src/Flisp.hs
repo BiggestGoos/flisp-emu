@@ -1,5 +1,6 @@
 module Flisp (
   Datapath.Datapath(..),
+  Memory.Memory,
   ControlUnit.ControlUnit(..),
   Counter.Counter(..),
   Inputs.Inputs(..),
