@@ -5,12 +5,14 @@ module Flisp (
   Inputs.Inputs(..),
   Flisp,
   flash,
+  write,
   clock,
   reset,
   controlSignals,
 ) where
 
 import qualified Types.Byte as Byte
+import qualified Types.Bit as Bit
 import qualified Types.Memory as Memory
 import qualified Types.Inputs as Inputs
 import qualified Datapath
@@ -26,6 +28,21 @@ flash input =
     memory = Memory.fromList (map (\ int -> Byte.fromInt int) input)
   in
     ControlUnit.flash memory
+
+write :: Int -> Int -> Flisp -> Flisp
+write input index (ControlUnit.ControlUnit {
+  counter,
+  datapath = datapath@(Datapath.Datapath {
+    memory
+  })
+}) =
+  let
+    newMemory = Memory.write memory (Byte.fromInt index) Bit.One (Byte.fromInt input)
+  in
+    ControlUnit.ControlUnit {
+      counter = counter,
+      datapath = Datapath.reflash newMemory datapath
+    }
 
 clock :: Flisp -> Flisp
 clock prev = ControlUnit.clock prev

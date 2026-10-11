@@ -42,6 +42,32 @@ flash memory =
     memory = memory
   }
 
+reflash :: M.Memory -> Datapath -> Datapath
+reflash memory (Datapath {
+  reg_a,
+  reg_t,
+  reg_x,
+  reg_y,
+  reg_pc,
+  reg_sp,
+  reg_ta,
+  reg_r,
+  reg_cc,
+  reg_i
+}) = Datapath {
+  reg_a  = reg_a,
+  reg_t  = reg_t,
+  reg_x  = reg_x,
+  reg_y  = reg_y,
+  reg_pc = reg_pc,
+  reg_sp = reg_sp,
+  reg_ta = reg_ta,
+  reg_r  = reg_r,
+  reg_cc = reg_cc,
+  reg_i  = reg_i,
+  memory = memory
+}
+
 clock :: Datapath -> I.Inputs -> Datapath
 clock
   (Datapath {
