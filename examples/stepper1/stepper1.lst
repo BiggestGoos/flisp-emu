@@ -1,0 +1,33 @@
+QAflisp - FLISP Absolute crossassembler, Version 1.3
+(c) GMV 1989-2025
+
+
+File: stepper1.lst
+05                      1. State_1: EQU $5
+---- File: "stepper1.sflisp"
+06                      2. State_2: EQU $6
+0A                      3. State_3: EQU $A
+09                      4. State_4: EQU $9
+                        5. 
+FB                      6. OUTPORT: EQU $FB
+                        7. 
+20                      8.   ORG $20
+                        9. 
+20                     10. start:
+                       11. 
+20 F0 05               12.   LDA #State_1
+22 E1 FB               13.   STA OUTPORT
+                       14. 
+24 F0 06               15.   LDA #State_2
+26 E1 FB               16.   STA OUTPORT
+                       17. 
+28 F0 0A               18.   LDA #State_3
+2A E1 FB               19.   STA OUTPORT
+                       20. 
+2C F0 09               21.   LDA #State_4
+2E E1 FB               22.   STA OUTPORT
+                       23. 
+30 33 20               24.   JMP start
+                       25. 
+FF                     26.   ORG $FF
+FF 20                  27.   FCB start

@@ -1,0 +1,45 @@
+QAflisp - FLISP Absolute crossassembler, Version 1.3
+(c) GMV 1989-2025
+
+
+File: flowingLights.lst
+FB                      1. LED: EQU $FB
+---- File: "flowingLights.sflisp"
+                        2. 
+20                      3.   ORG $20
+20                      4. start:
+20 92 20                5.   LDSP #$20
+22 34 26                6.   JSR main
+24 33 20                7.   JMP start
+                        8. 
+26                      9. main:
+                       10. 
+26 01 FE               11.   ANDCC #%11111110
+28 F0 01               12.   LDA #$1
+                       13. 
+2A                     14. main_1:
+                       15. 
+2A E1 FB               16.   STA LED
+2C 0D                  17.   ROLA
+                       18. 
+2D 34 31               19.   JSR Delay
+2F 33 2A               20.   JMP main_1
+                       21. 
+31                     22. Delay:
+31 10                  23.   PSHA
+32 13                  24.   PSHC
+                       25. 
+33 F0 FF               26.   LDA #$FF
+                       27. 
+35                     28. Delay_1:
+                       29. 
+35 08                  30.   DECA
+                       31. 
+36 25 FD               32.   BNE Delay_1
+                       33. 
+38 17                  34.   PULC
+39 14                  35.   PULA
+3A 43                  36.   RTS
+                       37. 
+FF                     38.   ORG $FF
+FF 20                  39.   FCB start

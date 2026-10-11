@@ -1,0 +1,27 @@
+State_1: EQU $5
+State_2: EQU $6
+State_3: EQU $A
+State_4: EQU $9
+
+OUTPORT: EQU $FB
+
+  ORG $20
+
+start:
+
+  LDA #State_1
+  STA OUTPORT
+
+  LDA #State_2
+  STA OUTPORT
+
+  LDA #State_3
+  STA OUTPORT
+
+  LDA #State_4
+  STA OUTPORT
+
+  JMP start
+
+  ORG $FF
+  FCB start

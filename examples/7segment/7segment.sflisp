@@ -1,0 +1,37 @@
+DIPSWITCH: EQU $FC
+SEGMENT7: EQU $FB
+SEG_ERROR: EQU $79
+
+  ORG $0
+
+seg_table:
+  FCB $3f,$06,$5b,$4f,$66,$6d,$7d,$07,$7f,$67
+
+  ORG $20
+start:
+
+  LDX #seg_table
+
+DisplaySegE_1:
+
+  LDA DIPSWITCH
+
+  CMPA #10
+  BCS DisplaySegE_2
+
+  LDA #SEG_ERROR
+
+  JMP DisplaySegE_3
+
+DisplaySegE_2:
+
+  LDA A,X
+
+DisplaySegE_3:
+
+  STA SEGMENT7
+
+  JMP DisplaySegE_1
+
+  ORG $FF
+  FCB start

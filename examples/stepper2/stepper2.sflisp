@@ -1,0 +1,60 @@
+  ORG $0
+
+state_vector:
+  FCB $5,$6,$A,$9
+
+state_index:
+  FCB $0
+
+OUTPORT: EQU $FB
+INPORT: EQU $FC
+
+  ORG $20
+start:
+  LDSP #$20
+  LDX #state_vector
+loop:
+
+  LDA INPORT
+  BSR Delay
+
+  LDA state_index
+  LDA A,X
+
+  STA OUTPORT
+
+  BSR NextState
+
+  JMP loop
+
+NextState:
+
+  LDA state_index
+  INCA
+  ANDA #%00000011
+  STA state_index
+
+  RTS
+
+Delay:
+  PSHC
+
+Delay_1:
+
+  TSTA
+  BEQ Delay_2
+
+  DECA
+
+  BNE Delay_1
+
+Delay_2:
+
+  PULC
+  RTS
+
+  ORG $FF
+  FCB start
+
+  ORG $FF
+  FCB start

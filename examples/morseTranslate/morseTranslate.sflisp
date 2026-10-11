@@ -1,0 +1,143 @@
+Inport: EQU $FC
+Utport: EQU $FB
+DelayC1: EQU $3 ;Dessa konstanter styr hur lång fördröjning Delay1s orsakar.
+DelayC2: EQU $1 ;Ändra dem eventuellt i labbet så att fördröjnigen blir rimligt lång.
+
+  ORG Utport
+  FCB $0
+
+  ORG  $FF
+  FCB  $20
+
+  ORG $FC
+  FCB $41
+
+  ORG  $20
+
+  LDX #MorseCode
+  LDSP #$20
+Main:
+
+  BSR ReadAscii
+  BSR FromAscii
+
+  ASLA
+  PSHA
+
+  LDA A,X
+  STA Count
+
+  PULA
+  INCA
+
+  LDA A,X
+
+Main_loop:
+  BSR BlinkLight
+  LSLA
+  DEC Count
+  BNE Main_loop
+
+  BRA  Main
+
+ReadAscii:
+
+ReadAscii_loop:
+  LDA Inport
+
+  LSRA
+
+  BCC ReadAscii_loop
+  RTS
+
+FromAscii: ; Ascii code in A, LSB of code is LSB of A
+  SUBA #'A'
+
+  BMI FromAscii_error ; Input was too low
+  CMPA #'Z'
+  BHI FromAscii_error ; Input was too high
+
+  BRA FromAscii_end
+
+FromAscii_error: ; If an incorrect input
+  LDA #$FF
+  STA Utport
+  BRA FromAscii_error
+FromAscii_end:
+  RTS
+
+BlinkLight:
+  PSHA
+
+  LDA #$FF
+  STA Utport
+  LDA 0,SP
+
+  LSLA
+  BCC BlinkLight_short
+
+  BSR Delay1s
+  BSR Delay1s
+  BSR Delay1s
+BlinkLight_short:
+  BSR Delay1s
+
+  LDA #$0
+  STA Utport
+  BSR Delay1s
+
+  PULA
+  RTS
+
+; Orsakar en fördröjning på ungefär 1s i simulatorn (vid snabb exekveringshastighet)
+; Ändrar inga register
+Delay1s:
+  PSHA
+  PSHX
+  PSHC
+  LDX  #DelayC2
+Delay1s_loop2:
+  LDA  #DelayC1
+Delay1s_loop:
+  DECA
+  BNE  Delay1s_loop
+  LEAX  -1,X
+  CMPX  #0
+  BNE  Delay1s_loop2
+  PULC
+  PULX
+  PULA
+  RTS
+
+; Data - Variabler
+Count:
+  RMB  1
+
+; Data - Konstanter
+MorseCode:
+  FCB 2,%01000000 ;'A'
+  FCB 4,%10000000 ;'B'
+  FCB 4,%10100000 ;'C'
+  FCB 3,%10000000 ;'D'
+  FCB 1,%00000000 ;'E'
+  FCB 4,%00100000 ;'F'
+  FCB 3,%11000000 ;'G'
+  FCB 4,%00000000 ;'H'
+  FCB 2,%00000000 ;'I'
+  FCB 4,%01110000 ;'J'
+  FCB 3,%10100000 ;'K'
+  FCB 4,%01000000 ;'L'
+  FCB 2,%11000000 ;'M'
+  FCB 2,%10000000 ;'N'
+  FCB 3,%11100000 ;'O'
+  FCB 4,%01100000 ;'P'
+  FCB 4,%11010000 ;'Q'
+  FCB 3,%01000000 ;'R'
+  FCB 3,%00000000 ;'S'
+  FCB 1,%10000000 ;'T'
+  FCB 3,%00100000 ;'U'
+  FCB 4,%00010000 ;'V'
+  FCB 3,%01100000 ;'W'
+  FCB 4,%10010000 ;'X'
+  FCB 4,%10110000 ;'Y'
+  FCB 4,%11000000 ;'Z'
