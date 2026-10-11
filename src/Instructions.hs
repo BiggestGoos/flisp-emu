@@ -44,11 +44,17 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
     adda_calc = ld_cc:(add_calc oe_a)
     adca_calc = g1:adda_calc
 
+    sub_calc open = [open, ld_r, f3, f2]
+
+    suba_calc = ld_cc:g0:(sub_calc oe_a)
+
     inc_calc open = [open, f3, f0, g0, ld_r, ld_cc, g3, g2]
     dec_calc open = [open, f3, f1, ld_r, ld_cc, g3, g2]
 
     lsr_calc open = [open, f3, f2, f1, ld_r, ld_cc, g9]
+    lsl_calc open = [open, f3, f2, f0, ld_r, ld_cc]
 
+    ror_calc open = [open, f3, f2, f1, ld_r, ld_cc, g1]
     rol_calc open = [open, f3, f2, f0, ld_r, ld_cc, g1]
 
     calc_end load = [load, oe_r, nf]
@@ -60,7 +66,7 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
     b_calc = [oe_pc, f3, f1, f0, ld_r]
     b_store = [oe_r, ld_pc, nf]
 
-    branch_if state cond = case state of
+    branch_if cond = case counter of
       4 -> b_init
       5 -> b_calc
       _ -> if cond
@@ -86,14 +92,14 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
     st_reg_ab open = [open, g14] ++ st_base
     st_reg_ns open = [open, g12] ++ st_base
 
-    psh_reg state open = case state of
+    psh_reg open = case counter of
       4 -> [dec_sp]
       _ -> [open, mw, g12, nf]
-    pul_reg state load = case state of
+    pul_reg load = case counter of
       4 -> [load, mr, g12]
       _ -> [inc_sp, nf]
 
-    exg_regs state open1 load1 open2 load2 = case state of
+    exg_regs open1 load1 open2 load2 = case counter of
       4 -> [open1, f3, f0, ld_r]
       5 -> [load1, open2]
       _ -> cc_rebind ++ (calc_end load2)
@@ -111,6 +117,10 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> im_init ld_t
           5 -> bitwise_and oe_cc True
           _ -> cc_rebind ++ (calc_end ld_cc)
+      0x02 -> case counter of
+          4 -> im_init ld_t
+          5 -> bitwise_or oe_cc
+          _ -> cc_rebind ++ (calc_end ld_cc)
       0x05 -> case counter of
           4 -> [ld_r, ld_cc]
           _ -> calc_end ld_a
@@ -120,21 +130,45 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
       0x08 -> case counter of
           4 -> dec_calc oe_a
           _ -> calc_end ld_a
-      0x10 -> psh_reg counter oe_a
-      0x11 -> psh_reg counter oe_x
-      0x13 -> psh_reg counter oe_cc
-      0x14 -> pul_reg counter ld_a
-      0x15 -> pul_reg counter ld_x
+      0x09 -> (tst_calc oe_a) ++ [nf]
+      0x0b -> case counter of
+          4 -> lsl_calc oe_a
+          _ -> calc_end ld_a
+      0x0c -> case counter of
+          4 -> lsr_calc oe_a
+          _ -> calc_end ld_a
+      0x0d -> case counter of
+          4 -> rol_calc oe_a
+          _ -> calc_end ld_a
+      0x0e -> case counter of
+          4 -> ror_calc oe_a
+          _ -> calc_end ld_a
+      0x10 -> psh_reg oe_a
+      0x11 -> psh_reg oe_x
+      0x13 -> psh_reg oe_cc
+      0x14 -> pul_reg ld_a
+      0x15 -> pul_reg ld_x
+      0x17 -> case counter of
+          4 -> [mr, g12] ++ cc_rebind
+          _ -> [inc_sp, nf]
       0x20 -> case counter of
           4 -> dec_sp:b_init
           5 -> clr_t:b_calc
           6 -> [oe_pc, mw, g12]
           _ -> b_store
-      0x21 -> branch_if counter True
-      0x24 -> branch_if counter (z == Bit.One)
-      0x25 -> branch_if counter (z == Bit.Zero)
-      0x2c -> branch_if counter (((n `Bit.xor` v) `Bit.or` z) == Bit.Zero)
+      0x21 -> branch_if True
+      0x22 -> branch_if (n == Bit.One)
+      0x24 -> branch_if (z == Bit.One)
+      0x25 -> branch_if (z == Bit.Zero)
+      0x28 -> branch_if (c == Bit.One)
+      0x29 -> branch_if (c == Bit.Zero)
+      0x2c -> branch_if (((n `Bit.xor` v) `Bit.or` z) == Bit.Zero)
+      0x2a -> branch_if ((c `Bit.or` z) == Bit.Zero)
       0x33 -> [ld_pc, mr, nf]
+      0x34 -> case counter of
+          4 -> [dec_sp, oe_pc, ld_r, f3, f0, g0]
+          5 -> [oe_r, mw, g12]
+          _ -> [mr, ld_pc, nf]
       0x37 -> case counter of
           4 -> ab_init
           5 -> g14:(inc_calc mr)
@@ -161,6 +195,10 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           _ -> g13:g12:(tst_calc mr) ++ [nf]
       0x90 -> ld_reg_im ld_x
       0x92 -> ld_reg_im ld_sp
+      0x94 -> case counter of
+          4 -> im_init ld_t
+          5 -> suba_calc
+          _ -> calc_end ld_a
       0x95 -> case counter of
           4 -> im_init ld_t
           5 -> adca_calc
@@ -179,7 +217,10 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> im_init ld_t
           5 -> (bitwise_and' oe_a True)
           _ -> calc_end ld_a
-      0x9f -> exg_regs counter oe_a ld_a oe_cc ld_cc
+      0x9c -> case counter of
+          4 -> im_init ld_t
+          _ -> nf:(cmp_calc oe_x)
+      0x9f -> exg_regs oe_a ld_a oe_cc ld_cc
       0xa0 -> case counter of
           4 -> ab_init
           _ -> ld_reg_ab ld_x
