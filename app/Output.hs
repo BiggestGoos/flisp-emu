@@ -1,12 +1,14 @@
 module Output (runFlisp) where
 
 import System.IO (hFlush, stdout)
-
+import Data.List (stripPrefix, isPrefixOf)
 import Numeric (showHex)
 
 import Flisp
 import qualified Flisp.Bit as Bit
 import qualified Flisp.Byte as Byte
+
+import Utils
 
 data NumberMode = Dec | Bin | Hex deriving (Eq)
 
@@ -49,6 +51,15 @@ instance Show OutputState where
     in
       show inputs ++ "\n\n" ++ show flisp
 
+setMemory :: Maybe String -> Flisp -> Flisp
+setMemory (Just (adr2:adr1:data2:data1:[])) flisp =
+  let
+    adr = twoHexToInt adr2 adr1
+    input = twoHexToInt data2 data1
+  in
+    write input adr flisp
+setMemory _ flisp = flisp
+
 parseInput :: String -> OutputState -> OutputState
 parseInput input (OutputState {
   flisp,
@@ -59,6 +70,7 @@ parseInput input (OutputState {
       value
         | null input       = clock flisp
         | 'r' `elem` input = reset flisp
+        | "mw" `isPrefixOf` input = setMemory (stripPrefix "mw" input) flisp
         | otherwise        = flisp
     in
       value,

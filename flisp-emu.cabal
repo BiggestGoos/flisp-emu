@@ -103,6 +103,7 @@ executable flisp-emu
     other-modules:
         Parse.S19
         Output
+        Utils
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
