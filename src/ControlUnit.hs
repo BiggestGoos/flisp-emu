@@ -4,6 +4,7 @@ import qualified Datapath
 import qualified Counter
 import qualified Instructions
 import qualified Types.Memory as Memory
+import qualified Types.Byte as Byte
 
 data ControlUnit = ControlUnit { counter :: Counter.Counter, datapath :: Datapath.Datapath } deriving (Show)
 
@@ -16,23 +17,24 @@ flash memory = ControlUnit {
 controlSignals :: ControlUnit -> Instructions.ControlSignals
 controlSignals (ControlUnit {
   counter,
-  datapath = datapath@(Datapath.Datapath {
+  datapath = (Datapath.Datapath {
     reg_i,
     reg_cc
   })
 }) = Instructions.create counter reg_i reg_cc
 
-clock :: ControlUnit -> ControlUnit
+clock :: ControlUnit -> (Byte.Byte, Byte.Byte) -> ControlUnit
 clock controlUnit@(ControlUnit {
   counter,
   datapath
-}) =
+})
+  externalInputs =
   let
     (nf, inputs) = controlSignals controlUnit
   in
     ControlUnit {
       counter = Counter.clock counter nf,
-      datapath = Datapath.clock datapath inputs
+      datapath = Datapath.clock datapath inputs externalInputs
     }
 
 reset :: ControlUnit -> ControlUnit

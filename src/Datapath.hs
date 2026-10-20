@@ -68,7 +68,7 @@ reflash memory (Datapath {
   memory = memory
 }
 
-clock :: Datapath -> I.Inputs -> Datapath
+clock :: Datapath -> I.Inputs -> (B.Byte, B.Byte) -> Datapath
 clock
   (Datapath {
     reg_a,
@@ -126,7 +126,8 @@ clock
     g2,
     g1,
     g0
-  }) =
+  })
+  (inputFB, inputFC) =
   let
 
     pickSource s1 s0 v0 v1 v2 v3 = case (Bit.bitsToInt [ s1, s0 ]) of
@@ -149,6 +150,10 @@ clock
       let
         regRead = R.read
         (<->) = Types.Bus.add
+        memoryBus = case (B.toInt address) of
+          0xfb -> Just inputFB
+          0xfc -> Just inputFC
+          _    -> M.read memory address mr
         bus' =
           regRead reg_a  oe_a  <->
           regRead reg_x  oe_x  <->
@@ -157,9 +162,9 @@ clock
           regRead reg_sp oe_sp <->
           regRead reg_r  oe_r  <->
           regRead reg_cc oe_cc <->
-          M.read  memory address mr
+          memoryBus
       in case bus' of
-        Nothing        -> B.fromInt 0x00
+        Nothing        -> B.zero
         (Just busData) -> busData
 
     -- ALU and CC

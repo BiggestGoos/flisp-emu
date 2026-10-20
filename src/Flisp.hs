@@ -7,7 +7,9 @@ module Flisp (
   Flisp,
   flash,
   write,
+  output,
   clock,
+  clock',
   reset,
   controlSignals,
 ) where
@@ -45,8 +47,27 @@ write input index (ControlUnit.ControlUnit {
       datapath = Datapath.reflash newMemory datapath
     }
 
+output :: Flisp -> (Byte.Byte, Byte.Byte)
+output (ControlUnit.ControlUnit {
+  datapath = (Datapath.Datapath {
+    memory
+  })
+}) =
+  let
+    fb = case Memory.read memory (Byte.fromInt 0xfb) Bit.One of
+      Nothing -> Byte.zero
+      (Just fb') -> fb'
+    fc = case Memory.read memory (Byte.fromInt 0xfc) Bit.One of
+      Nothing -> Byte.zero
+      (Just fc') -> fc'
+  in
+    (fb, fc)
+
 clock :: Flisp -> Flisp
-clock prev = ControlUnit.clock prev
+clock prev = ControlUnit.clock prev (Byte.zero, Byte.zero)
+
+clock' :: Flisp -> (Byte.Byte, Byte.Byte) -> Flisp
+clock' prev externalInputs = ControlUnit.clock prev externalInputs
 
 reset :: Flisp -> Flisp
 reset flisp = ControlUnit.reset flisp
