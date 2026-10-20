@@ -23,6 +23,7 @@ data OutputState = OutputState {
 testBreakpoint :: OutputState -> (Bool, OutputState)
 testBreakpoint state@(OutputState {
   flisp = flisp@(Flisp.ControlUnit {
+    counter,
     datapath = (Flisp.Datapath {
       reg_pc
     })
@@ -36,16 +37,17 @@ testBreakpoint state@(OutputState {
       bp = case breakpoint of
         Nothing -> Byte.zero -- Can't happen
         (Just bp') -> bp'
+      fetch = Flisp.Counter Bit.Zero Bit.Zero Bit.One Bit.One
     in
-      breakpoint == Nothing || reg_pc /= bp
-  then (False, state)
-  else (True, OutputState {
+      breakpoint /= Nothing && reg_pc == bp && counter == fetch
+  then (True, OutputState {
     flisp,
     numberMode,
     showSignals,
     breakpoint,
     run = Nothing
   })
+  else (False, state)
 
 showBit :: Bit.Bit -> String
 showBit bit =
