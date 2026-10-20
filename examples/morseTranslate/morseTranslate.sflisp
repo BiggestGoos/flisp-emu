@@ -39,27 +39,34 @@ Main_loop:
 
 ReadAscii:
 
-ReadAscii_loop:
+ReadAscii_loop1:
   LDA Inport
-
   LSRA
 
-  BCC ReadAscii_loop
+  BCS ReadAscii_loop1
+
+ReadAscii_loop2:
+  LDA Inport
+  LSRA
+
+  BCC ReadAscii_loop2
+
   RTS
 
 FromAscii: ; Ascii code in A, LSB of code is LSB of A
   SUBA #'A'
 
   BMI FromAscii_error ; Input was too low
-  CMPA #'Z'
-  BHI FromAscii_error ; Input was too high
+  CMPA #26
+  BCC FromAscii_error ; Input was too high
 
   BRA FromAscii_end
 
 FromAscii_error: ; If an incorrect input
   LDA #$FF
   STA Utport
-  BRA FromAscii_error
+FromAscii_error_loop:
+  BRA FromAscii_error_loop
 FromAscii_end:
   RTS
 

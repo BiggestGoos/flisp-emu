@@ -17,18 +17,18 @@ FF 20                  10.   FCB  $20
                        11. 
 20                     12.   ORG  $20
                        13. 
-20 90 7F               14.   LDX #MorseCode
+20 90 84               14.   LDX #MorseCode
 22 92 20               15.   LDSP #$20
 24                     16. Main:
                        17. 
 24 20 13               18.   BSR ReadAscii
-26 20 17               19.   BSR FromAscii
+26 20 1C               19.   BSR FromAscii
                        20. 
 28 0B                  21.   ASLA
 29 10                  22.   PSHA
                        23. 
 2A F4                  24.   LDA A,X
-2B E1 7E               25.   STA Count
+2B E1 83               25.   STA Count
                        26. 
 2D 14                  27.   PULA
 2E 07                  28.   INCA
@@ -36,111 +36,118 @@ FF 20                  10.   FCB  $20
 2F F4                  30.   LDA A,X
                        31. 
 30                     32. Main_loop:
-30 20 1E               33.   BSR BlinkLight
+30 20 23               33.   BSR BlinkLight
 32 0B                  34.   LSLA
-33 38 7E               35.   DEC Count
+33 38 83               35.   DEC Count
 35 25 F9               36.   BNE Main_loop
                        37. 
 37 21 EB               38.   BRA  Main
                        39. 
 39                     40. ReadAscii:
                        41. 
-39                     42. ReadAscii_loop:
+39                     42. ReadAscii_loop1:
 39 F1 FC               43.   LDA Inport
-                       44. 
-3B 0C                  45.   LSRA
-                       46. 
-3C 29 FB               47.   BCC ReadAscii_loop
-3E 43                  48.   RTS
-                       49. 
-3F                     50. FromAscii: ; Ascii code in A, LSB of code is LSB of A
-3F 94 41               51.   SUBA #'A'
-                       52. 
-41 22 06               53.   BMI FromAscii_error ; Input was too low
-43 97 5A               54.   CMPA #'Z'
-45 2A 02               55.   BHI FromAscii_error ; Input was too high
-                       56. 
-47 21 06               57.   BRA FromAscii_end
+3B 0C                  44.   LSRA
+                       45. 
+3C 28 FB               46.   BCS ReadAscii_loop1
+                       47. 
+3E                     48. ReadAscii_loop2:
+3E F1 FC               49.   LDA Inport
+40 0C                  50.   LSRA
+                       51. 
+41 29 FB               52.   BCC ReadAscii_loop2
+                       53. 
+43 43                  54.   RTS
+                       55. 
+44                     56. FromAscii: ; Ascii code in A, LSB of code is LSB of A
+44 94 41               57.   SUBA #'A'
                        58. 
-49                     59. FromAscii_error: ; If an incorrect input
-49 F0 FF               60.   LDA #$FF
-4B E1 FB               61.   STA Utport
-4D 21 FA               62.   BRA FromAscii_error
-4F                     63. FromAscii_end:
-4F 43                  64.   RTS
-                       65. 
-50                     66. BlinkLight:
-50 10                  67.   PSHA
-                       68. 
-51 F0 FF               69.   LDA #$FF
-53 E1 FB               70.   STA Utport
-55 F2 00               71.   LDA 0,SP
+46 22 06               59.   BMI FromAscii_error ; Input was too low
+48 97 1A               60.   CMPA #26
+4A 29 02               61.   BCC FromAscii_error ; Input was too high
+                       62. 
+4C 21 06               63.   BRA FromAscii_end
+                       64. 
+4E                     65. FromAscii_error: ; If an incorrect input
+4E F0 FF               66.   LDA #$FF
+50 E1 FB               67.   STA Utport
+52                     68. FromAscii_error_loop:
+52 21 FE               69.   BRA FromAscii_error_loop
+54                     70. FromAscii_end:
+54 43                  71.   RTS
                        72. 
-57 0B                  73.   LSLA
-58 29 06               74.   BCC BlinkLight_short
+55                     73. BlinkLight:
+55 10                  74.   PSHA
                        75. 
-5A 20 0E               76.   BSR Delay1s
-5C 20 0C               77.   BSR Delay1s
-5E 20 0A               78.   BSR Delay1s
-60                     79. BlinkLight_short:
-60 20 08               80.   BSR Delay1s
-                       81. 
-62 F0 00               82.   LDA #$0
-64 E1 FB               83.   STA Utport
-66 20 02               84.   BSR Delay1s
-                       85. 
-68 14                  86.   PULA
-69 43                  87.   RTS
+56 F0 FF               76.   LDA #$FF
+58 E1 FB               77.   STA Utport
+5A F2 00               78.   LDA 0,SP
+                       79. 
+5C 0B                  80.   LSLA
+5D 29 06               81.   BCC BlinkLight_short
+                       82. 
+5F 20 0E               83.   BSR Delay1s
+61 20 0C               84.   BSR Delay1s
+63 20 0A               85.   BSR Delay1s
+65                     86. BlinkLight_short:
+65 20 08               87.   BSR Delay1s
                        88. 
-                       89. ; Orsakar en fördröjning på ungefär 1s i simulatorn (vid snabb exekveringshastighet)
-                       90. ; Ändrar inga register
-6A                     91. Delay1s:
-6A 10                  92.   PSHA
-6B 11                  93.   PSHX
-6C 13                  94.   PSHC
-6D 90 01               95.   LDX  #DelayC2
-6F                     96. Delay1s_loop2:
-6F F0 03               97.   LDA  #DelayC1
-71                     98. Delay1s_loop:
-71 08                  99.   DECA
-72 25 FD              100.   BNE  Delay1s_loop
-74 CC FF              101.   LEAX  -1,X
-76 9C 00              102.   CMPX  #0
-78 25 F5              103.   BNE  Delay1s_loop2
-7A 17                 104.   PULC
-7B 15                 105.   PULX
-7C 14                 106.   PULA
-7D 43                 107.   RTS
-                      108. 
-                      109. ; Data - Variabler
-7E                    110. Count:
-7E 00                 111.   RMB  1
-                      112. 
-                      113. ; Data - Konstanter
-7F                    114. MorseCode:
-7F 02 40              115.   FCB 2,%01000000 ;'A'
-81 04 80              116.   FCB 4,%10000000 ;'B'
-83 04 A0              117.   FCB 4,%10100000 ;'C'
-85 03 80              118.   FCB 3,%10000000 ;'D'
-87 01 00              119.   FCB 1,%00000000 ;'E'
-89 04 20              120.   FCB 4,%00100000 ;'F'
-8B 03 C0              121.   FCB 3,%11000000 ;'G'
-8D 04 00              122.   FCB 4,%00000000 ;'H'
-8F 02 00              123.   FCB 2,%00000000 ;'I'
-91 04 70              124.   FCB 4,%01110000 ;'J'
-93 03 A0              125.   FCB 3,%10100000 ;'K'
-95 04 40              126.   FCB 4,%01000000 ;'L'
-97 02 C0              127.   FCB 2,%11000000 ;'M'
-99 02 80              128.   FCB 2,%10000000 ;'N'
-9B 03 E0              129.   FCB 3,%11100000 ;'O'
-9D 04 60              130.   FCB 4,%01100000 ;'P'
-9F 04 D0              131.   FCB 4,%11010000 ;'Q'
-A1 03 40              132.   FCB 3,%01000000 ;'R'
-A3 03 00              133.   FCB 3,%00000000 ;'S'
-A5 01 80              134.   FCB 1,%10000000 ;'T'
-A7 03 20              135.   FCB 3,%00100000 ;'U'
-A9 04 10              136.   FCB 4,%00010000 ;'V'
-AB 03 60              137.   FCB 3,%01100000 ;'W'
-AD 04 90              138.   FCB 4,%10010000 ;'X'
-AF 04 B0              139.   FCB 4,%10110000 ;'Y'
-B1 04 C0              140.   FCB 4,%11000000 ;'Z'
+67 F0 00               89.   LDA #$0
+69 E1 FB               90.   STA Utport
+6B 20 02               91.   BSR Delay1s
+                       92. 
+6D 14                  93.   PULA
+6E 43                  94.   RTS
+                       95. 
+                       96. ; Orsakar en fördröjning på ungefär 1s i simulatorn (vid snabb exekveringshastighet)
+                       97. ; Ändrar inga register
+6F                     98. Delay1s:
+6F 10                  99.   PSHA
+70 11                 100.   PSHX
+71 13                 101.   PSHC
+72 90 01              102.   LDX  #DelayC2
+74                    103. Delay1s_loop2:
+74 F0 03              104.   LDA  #DelayC1
+76                    105. Delay1s_loop:
+76 08                 106.   DECA
+77 25 FD              107.   BNE  Delay1s_loop
+79 CC FF              108.   LEAX  -1,X
+7B 9C 00              109.   CMPX  #0
+7D 25 F5              110.   BNE  Delay1s_loop2
+7F 17                 111.   PULC
+80 15                 112.   PULX
+81 14                 113.   PULA
+82 43                 114.   RTS
+                      115. 
+                      116. ; Data - Variabler
+83                    117. Count:
+83 00                 118.   RMB  1
+                      119. 
+                      120. ; Data - Konstanter
+84                    121. MorseCode:
+84 02 40              122.   FCB 2,%01000000 ;'A'
+86 04 80              123.   FCB 4,%10000000 ;'B'
+88 04 A0              124.   FCB 4,%10100000 ;'C'
+8A 03 80              125.   FCB 3,%10000000 ;'D'
+8C 01 00              126.   FCB 1,%00000000 ;'E'
+8E 04 20              127.   FCB 4,%00100000 ;'F'
+90 03 C0              128.   FCB 3,%11000000 ;'G'
+92 04 00              129.   FCB 4,%00000000 ;'H'
+94 02 00              130.   FCB 2,%00000000 ;'I'
+96 04 70              131.   FCB 4,%01110000 ;'J'
+98 03 A0              132.   FCB 3,%10100000 ;'K'
+9A 04 40              133.   FCB 4,%01000000 ;'L'
+9C 02 C0              134.   FCB 2,%11000000 ;'M'
+9E 02 80              135.   FCB 2,%10000000 ;'N'
+A0 03 E0              136.   FCB 3,%11100000 ;'O'
+A2 04 60              137.   FCB 4,%01100000 ;'P'
+A4 04 D0              138.   FCB 4,%11010000 ;'Q'
+A6 03 40              139.   FCB 3,%01000000 ;'R'
+A8 03 00              140.   FCB 3,%00000000 ;'S'
+AA 01 80              141.   FCB 1,%10000000 ;'T'
+AC 03 20              142.   FCB 3,%00100000 ;'U'
+AE 04 10              143.   FCB 4,%00010000 ;'V'
+B0 03 60              144.   FCB 3,%01100000 ;'W'
+B2 04 90              145.   FCB 4,%10010000 ;'X'
+B4 04 B0              146.   FCB 4,%10110000 ;'Y'
+B6 04 C0              147.   FCB 4,%11000000 ;'Z'
