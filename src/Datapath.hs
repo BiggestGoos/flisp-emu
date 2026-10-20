@@ -151,8 +151,8 @@ clock
         regRead = R.read
         (<->) = Types.Bus.add
         memoryBus = case (B.toInt address) of
-          0xfb -> Just inputFB
-          0xfc -> Just inputFC
+          0xfb -> if mr == Bit.One then Just inputFB else Nothing
+          0xfc -> if mr == Bit.One then Just inputFC else Nothing
           _    -> M.read memory address mr
         bus' =
           regRead reg_a  oe_a  <->
