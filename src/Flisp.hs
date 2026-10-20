@@ -11,6 +11,7 @@ module Flisp (
   clock,
   clock',
   reset,
+  interruptRequest,
   controlSignals,
 ) where
 
@@ -44,7 +45,8 @@ write input index (ControlUnit.ControlUnit {
   in
     ControlUnit.ControlUnit {
       counter = counter,
-      datapath = Datapath.reflash newMemory datapath
+      datapath = Datapath.reflash newMemory datapath,
+      irq = Just Bit.Zero
     }
 
 output :: Flisp -> (Byte.Byte, Byte.Byte)
@@ -71,6 +73,9 @@ clock' prev externalInputs = ControlUnit.clock prev externalInputs
 
 reset :: Flisp -> Flisp
 reset flisp = ControlUnit.reset flisp
+
+interruptRequest :: Flisp -> Flisp
+interruptRequest flisp = ControlUnit.interruptRequest flisp
 
 controlSignals :: Flisp -> Instructions.ControlSignals
 controlSignals flisp = ControlUnit.controlSignals flisp

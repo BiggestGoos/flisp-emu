@@ -9,21 +9,29 @@ import Types.Inputs.Constants
 
 import Numeric (showHex)
 
-type ControlSignals = (Bit.Bit, Inputs.Inputs)
+type ControlSignals = (Bit.Bit, Inputs.Inputs, Maybe Bit.Bit)
 
-create :: Counter.Counter -> Byte.Byte -> Byte.Byte -> ControlSignals
-create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
+create :: Counter.Counter -> Byte.Byte -> Byte.Byte -> (Maybe Bit.Bit) -> ControlSignals
+create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) irq =
   let
     instruction = Byte.toInt reg_i
     counter = Bit.bitsToInt [q3, q2, q1, q0]
 
     nf = 42
+    irq_start = 43
+    irq_ack = 44
     ins inputs =
       (
         if nf `elem` inputs
         then Bit.One
         else Bit.Zero,
-        Inputs.create inputs
+        Inputs.create inputs,
+        if irq_start `elem` inputs
+        then Nothing
+        else
+          if irq_ack `elem` inputs
+          then Just Bit.Zero
+          else irq
       )
 
     nop = [nf]
@@ -80,6 +88,7 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
 
     cc_nz0_ = [ld_cc, g5, g3, g2]
     cc_rebind = [ld_cc, g8, g6, g4, g2]
+    cc_rebind' = cc_rebind ++ [g10]
 
     ld_base = [f3, f0, nf] ++ cc_nz0_
     ld_reg_im load = [load, mr, inc_pc] ++ ld_base
@@ -104,23 +113,55 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
       5 -> [load1, open2]
       _ -> cc_rebind ++ (calc_end load2)
 
+    hw_interrupt = case counter of
+      3  -> [irq_start, dec_sp, clr_t]
+      4  -> [oe_pc, dec_sp, mw, g12]
+      5  -> [oe_y, dec_sp, mw, g12]
+      6  -> [oe_x, dec_sp, mw, g12]
+      7  -> [oe_a, dec_sp, mw, g12]
+      8  -> [oe_cc, mw, g12, g11, g9, g8, g7, g6, g5, g4, g3, g2, ld_cc]
+      9  -> [ld_r, f0]
+      10 -> [oe_r, ld_ta]
+      _  -> [mr, g14, ld_pc, nf, irq_ack]
+
+    sw_interrupt = case counter of
+      4  -> [dec_sp]
+      5  -> [oe_pc, dec_sp, mw, g12]
+      6  -> [oe_y, dec_sp, mw, g12]
+      7  -> [oe_x, dec_sp, mw, g12]
+      8  -> [oe_a, dec_sp, mw, g12]
+      9  -> [oe_cc, mw, g12, g11, g9, g8, g7, g6, g5, g4, g3, g2, ld_cc]
+      10 -> [ld_r, f1]
+      11 -> [oe_r, ld_ta]
+      _  -> [mr, g14, ld_pc, nf]
+
+    eval_state :: Int
+    eval_state =
+      if (irq == Just Bit.One && counter == 3 && i == Bit.Zero) || irq == Nothing
+      then 0
+      else
+        if counter <= 3
+        then 1
+        else 2
+
   in ins $
-    if counter <= 3
-    then case counter of
+    case eval_state of
+    0 -> hw_interrupt
+    1 -> case counter of
       0 -> [ld_r, f1, f0, g11, ld_cc]
       1 -> [oe_r, ld_ta]
       2 -> [mr, g14, ld_pc]
       _ -> [mr, ld_i, inc_pc, clr_t]
-    else case instruction of
+    _ -> case instruction of
       0x00 -> nop
       0x01 -> case counter of
           4 -> im_init ld_t
           5 -> bitwise_and oe_cc True
-          _ -> cc_rebind ++ (calc_end ld_cc)
+          _ -> cc_rebind' ++ (calc_end ld_cc)
       0x02 -> case counter of
           4 -> im_init ld_t
           5 -> bitwise_or oe_cc
-          _ -> cc_rebind ++ (calc_end ld_cc)
+          _ -> cc_rebind' ++ (calc_end ld_cc)
       0x05 -> case counter of
           4 -> [ld_r, ld_cc]
           _ -> calc_end ld_a
@@ -178,6 +219,12 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           5 -> g14:(dec_calc mr)
           _ -> g14:(calc_end mw)
       0x43 -> [inc_sp, mr, g12, ld_pc, nf]
+      0x44 -> case counter of
+          4 -> [mr, g12, inc_sp] ++ cc_rebind'
+          5 -> [mr, g12, inc_sp, ld_a]
+          6 -> [mr, g12, inc_sp, ld_x]
+          7 -> [mr, g12, inc_sp, ld_y]
+          _ -> [mr, g12, inc_sp, ld_pc, nf]
       0x48 -> case counter of
           4 -> im_init ld_t
           5 -> g12:(dec_calc mr)
@@ -229,8 +276,11 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           5 -> ab_snd ld_t
           6 -> adca_calc
           _ -> calc_end ld_a
+      0xb0 -> case counter of
+          4 -> id_init
+          _ -> ld_reg_ns ld_x
       0xb2 -> case counter of
-          4 -> im_init ld_t
+          4 -> id_init
           _ -> ld_reg_ns ld_sp
       0xb5 -> case counter of
           4 -> id_init
@@ -282,19 +332,11 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) =
           4 -> aid_init
           _ -> ld_reg_ax ld_a
 
-      -- Temporary, disregard
-      --
-      -- MOVE #Data,Adr
-      0xdf -> case counter of
-          4 -> [mr, ld_ta, inc_pc]
-          5 -> [mr, ld_r, f3, f0, inc_pc]
-          _ -> [oe_r, mw, g14, nf]
-      0xef -> case counter of
-          4 -> [mr, ld_r, f3, f0, inc_pc]
-          5 -> [mr, ld_t, inc_pc]
-          6 -> cmp_calc oe_a
-          _ -> if z == Bit.One
-               then [oe_r, ld_pc, nf]
-               else nop
+      0x03 -> sw_interrupt
+      0x04 -> sw_interrupt
+      0xdf -> sw_interrupt
+      0xe0 -> sw_interrupt
+      0xef -> sw_interrupt
+      0xff -> sw_interrupt
 
-      _    -> error $ "Instruction " ++ (showHex instruction "") ++ " is not implemented!" -- This should throw an interrupt, this is temporary
+      _    -> error $ "Instruction " ++ (showHex instruction "") ++ " is not implemented!" -- This should throw an interrupt, this is temporary:
