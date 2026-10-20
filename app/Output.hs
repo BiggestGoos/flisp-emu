@@ -79,19 +79,26 @@ showByte byte Hex =
 showRegister :: Byte.Byte -> String -> NumberMode -> String
 showRegister byte label numbermode = label ++ ": " ++ (showByte byte numbermode)
 
-showMemory :: Flisp.Memory -> Byte.Byte -> NumberMode -> String
-showMemory memory pc numbermode =
+showMemory :: Flisp.Memory -> Byte.Byte -> Byte.Byte -> NumberMode -> String
+showMemory memory pc sp numbermode =
   let
     pc_index = Byte.toInt pc
+    sp_index = Byte.toInt sp
     indexed = zip [0..255] memory
     per_row = 8
   in
     foldl' (\ acc (index, byte) ->
       let
         spacing =
-          if index == pc_index
-          then ('[', ']')
-          else (' ', ' ')
+          if index == pc_index && index == sp_index
+          then ('{', '}')
+          else
+            if index == pc_index
+            then ('[', ']')
+            else
+              if index == sp_index
+              then ('(', ')')
+              else (' ', ' ')
         new_line =
           if index `mod` per_row /= 0
           then ""
@@ -120,7 +127,7 @@ showDatapath (Flisp.Datapath {
     top_string = (foldl' (\ acc (byte, label) -> acc ++ " --- " ++ (showRegister byte label numbermode)) "" registers_top) ++ " ---"
     bot_string = (foldl' (\ acc (byte, label) -> acc ++ " --- " ++ (showRegister byte label numbermode)) "" registers_bot) ++ " ---"
   in
-    top_string ++ "\n" ++ bot_string ++ "\n\n" ++ (showMemory memory reg_pc numbermode)
+    top_string ++ "\n" ++ bot_string ++ "\n\n" ++ (showMemory memory reg_pc reg_sp numbermode)
 
 showCounter :: Flisp.Counter -> String
 showCounter (Flisp.Counter q3 q2 q1 q0) = "Counter: Q" ++ (show (Bit.bitsToInt [q3, q2, q1, q0]))
@@ -171,7 +178,7 @@ showInputs flisp =
       g2,
       g1,
       g0
-    })) = controlSignals flisp
+    }), irq) = controlSignals flisp
 
     signalsToString signals = drop 2 (foldl' (\ acc (label, bit) -> acc ++ ", " ++ label ++ ": " ++ (showBit bit)) "" signals)
 
@@ -192,9 +199,13 @@ showInputs flisp =
     mux_signals = [("14", g14), ("13", g13), ("12", g12), ("11", g11), ("10", g10), ("9", g9), ("8", g8), ("7", g7), ("6", g6), ("5", g5), ("4", g4), ("3", g3), ("2", g2), ("1", g1), ("0", g0)]
     mux_line = "gX: " ++ (signalsToString mux_signals) ++ "\n"
     nf_line = "NF: " ++ (showBit nf) ++ "\n"
+    irq' = case irq of
+      Nothing    -> "[+]"
+      (Just bit) -> showBit bit
+    irq_line = "IRQ: " ++ irq' ++ "\n"
 
   in
-    "Signals: \n" ++ load_line ++ open_line ++ clr_line ++ inc_line ++ dec_line ++ alu_line ++ mem_line ++ mux_line ++ nf_line
+    "Signals: \n" ++ load_line ++ open_line ++ clr_line ++ inc_line ++ dec_line ++ alu_line ++ mem_line ++ mux_line ++ nf_line ++ irq_line
 
 instance Show OutputState where
   show (OutputState {
@@ -260,6 +271,7 @@ parseInput input (OutputState {
       value
         | null input = clock flisp
         | input == "r" = reset flisp
+        | input == "irq" = interruptRequest flisp
         | "mw" `isPrefixOf` input = setMemory (stripPrefix "mw" input) flisp
         | otherwise        = flisp
     in

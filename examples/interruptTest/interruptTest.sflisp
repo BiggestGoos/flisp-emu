@@ -1,0 +1,31 @@
+
+  ORG $20
+  ANDCC #0
+  LDSP #$20
+
+loop:
+  INCA
+  ;FCB $03
+  BRA loop
+
+handle_trap:
+  LDX 4,SP
+  LDA -1,X
+
+  CMPA #$03
+  BEQ handle_trap_store
+  RTI
+handle_trap_store:
+  LDA 1,SP
+handle_irq:
+  STA $0
+  RTI
+
+  ORG $FD
+  FCB handle_irq
+
+  ORG $FE
+  FCB handle_trap
+
+  ORG $FF
+  FCB $20
