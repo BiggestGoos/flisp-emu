@@ -17,7 +17,8 @@ data OutputState = OutputState {
   numberMode :: NumberMode,
   showSignals :: Bool,
   breakpoint :: Maybe Byte.Byte,
-  run :: Maybe Int -- If Nothing, then don't run, if 0 run full speed, if n, run at n Hz (TODO last part)
+  run :: Maybe Int, -- If Nothing, then don't run, if 0 run full speed, if n, run at n Hz (TODO last part)
+  inputs :: (Byte.Byte, Byte.Byte)
 }
 
 testBreakpoint :: OutputState -> (Bool, OutputState)
@@ -30,7 +31,8 @@ testBreakpoint state@(OutputState {
   }),
   numberMode,
   showSignals,
-  breakpoint
+  breakpoint,
+  inputs
 }) =
   if
     let
@@ -45,7 +47,8 @@ testBreakpoint state@(OutputState {
     numberMode,
     showSignals,
     breakpoint,
-    run = Nothing
+    run = Nothing,
+    inputs
   })
   else (False, state)
 
@@ -132,8 +135,8 @@ showDatapath (Flisp.Datapath {
 showCounter :: Flisp.Counter -> String
 showCounter (Flisp.Counter q3 q2 q1 q0) = "Counter: Q" ++ (show (Bit.bitsToInt [q3, q2, q1, q0]))
 
-showInputs :: Flisp -> String
-showInputs flisp =
+showSignals' :: Flisp -> String
+showSignals' flisp =
   let
     (nf, (Flisp.Inputs {
       ld_a,
@@ -207,6 +210,9 @@ showInputs flisp =
   in
     "Signals: \n" ++ load_line ++ open_line ++ clr_line ++ inc_line ++ dec_line ++ alu_line ++ mem_line ++ mux_line ++ nf_line ++ irq_line
 
+showInputs :: (Byte.Byte, Byte.Byte) -> NumberMode -> String
+showInputs (inputFB, inputFC) nrMode = "Inputs\nFB: " ++ (showByte inputFB nrMode) ++ "\nFC: " ++ (showByte inputFC nrMode) ++ "\n"
+
 instance Show OutputState where
   show (OutputState {
     flisp = flisp@(Flisp.ControlUnit {
@@ -215,27 +221,28 @@ instance Show OutputState where
     }),
     numberMode,
     showSignals,
-    breakpoint
+    breakpoint,
+    inputs
   }) =
     let
       signals =
         if showSignals
-        then (showInputs flisp) ++ "\n"
+        then (showSignals' flisp) ++ "\n"
         else ""
       bp = (case breakpoint of
         Nothing -> ""
         (Just bp') -> "Breakpoint: " ++ (showByte bp' Hex)) ++ "\n"
     in
-       signals ++ bp ++ (showCounter counter) ++ "\n" ++ (showDatapath datapath numberMode)
+       signals ++ bp ++ (showInputs inputs numberMode) ++ "\n" ++ (showCounter counter) ++ "\n" ++ (showDatapath datapath numberMode)
 
-setMemory :: Maybe String -> Flisp -> Flisp
-setMemory (Just (adr2:adr1:'$':data2:data1:[])) flisp =
+parseData :: Maybe String -> Maybe (Int, Int)
+parseData (Just (adr2:adr1:'$':data2:data1:[])) =
   let
     adr = twoHexToInt adr2 adr1
     input = twoHexToInt data2 data1
   in
-    write input adr flisp
-setMemory (Just (adr2:adr1:'%':bits')) flisp =
+    Just (adr, input)
+parseData (Just (adr2:adr1:'%':bits')) =
   let
     bits = map (\ digit ->
       if digit == '0'
@@ -248,28 +255,43 @@ setMemory (Just (adr2:adr1:'%':bits')) flisp =
     adr = twoHexToInt adr2 adr1
     input = Bit.bitsToInt bits
   in
-    write input adr flisp
-setMemory (Just (adr2:adr1:digits')) flisp =
+    Just (adr, input)
+parseData (Just (_:_:[])) = Nothing
+parseData (Just (adr2:adr1:digits')) =
   let
     adr = twoHexToInt adr2 adr1
     realDigits = ['0'..'9']
     digits = map (\ x -> if not $ x `elem` realDigits then error $ [x] ++ " is not a valid digit for decimal numbers!" else x) digits'
-    input = read digits :: Int
+    input = read digits
   in
-    write input adr flisp
-setMemory _ flisp = flisp
+    Just (adr, input)
+parseData _ = Nothing
+
+setMemory :: Maybe String -> Flisp -> Flisp
+setMemory Nothing flisp = flisp
+setMemory inputData flisp =
+  let
+    parsedData = parseData inputData
+    (adr, input) = case parsedData of
+      Just data' -> data'
+      Nothing -> (0, 0)
+  in
+    if parsedData == Nothing
+    then flisp
+    else write input adr flisp
 
 parseInput :: String -> OutputState -> OutputState
 parseInput input (OutputState {
   flisp,
   numberMode,
   showSignals,
-  breakpoint
+  breakpoint,
+  inputs = inputs@(inputFB, inputFC)
 }) = OutputState {
   flisp =
     let
       value
-        | null input = clock flisp
+        | null input = clock' flisp inputs
         | input == "r" = reset flisp
         | input == "irq" = interruptRequest flisp
         | "mw" `isPrefixOf` input = setMemory (stripPrefix "mw" input) flisp
@@ -302,7 +324,24 @@ parseInput input (OutputState {
   run =
     if "run" `isPrefixOf` input
     then Just 0
-    else Nothing
+    else Nothing,
+  inputs =
+    let
+      parsedData =
+        if "in" `isPrefixOf` input
+        then parseData $ stripPrefix "in" input
+        else Nothing
+      (adr, newInput) = case parsedData of
+        Just data' -> data'
+        Nothing -> (0, 0)
+    in (
+      if adr == 0xfb
+      then Byte.fromInt newInput
+      else inputFB,
+      if adr == 0xfc
+      then Byte.fromInt newInput
+      else inputFC
+    )
 }
 
 runFlisp :: Flisp -> IO ()
@@ -312,7 +351,8 @@ runFlisp flisp = do
     numberMode = Hex,
     showSignals = False,
     breakpoint = Nothing,
-    run = Nothing
+    run = Nothing,
+    inputs = (Byte.zero, Byte.zero)
   }
   loop state
 
@@ -329,7 +369,8 @@ loop state@(OutputState {
   flisp,
   numberMode,
   showSignals,
-  breakpoint
+  breakpoint,
+  inputs
 }) = do
   print state
 
@@ -357,9 +398,10 @@ loop state@(OutputState {
     then loop newState
     else return ()
   else loop (OutputState {
-    flisp = clock flisp,
+    flisp = clock' flisp inputs,
     numberMode,
     showSignals,
     breakpoint,
-    run
+    run,
+    inputs
   })
