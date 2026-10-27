@@ -11,6 +11,8 @@ import Numeric (showHex)
 
 type ControlSignals = (Bit.Bit, Inputs.Inputs, Maybe Bit.Bit)
 
+data CurrentState = HW_Int | Reset | Normal deriving (Eq)
+
 create :: Counter.Counter -> Byte.Byte -> Byte.Byte -> (Maybe Bit.Bit) -> ControlSignals
 create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) irq =
   let
@@ -135,19 +137,19 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) irq =
       11 -> [oe_r, ld_ta]
       _  -> [mr, g14, ld_pc, nf]
 
-    eval_state :: Int
+    eval_state :: CurrentState
     eval_state =
       if (irq == Just Bit.One && counter == 3 && i == Bit.Zero) || irq == Nothing
-      then 0
+      then HW_Int
       else
         if counter <= 3
-        then 1
-        else 2
+        then Reset
+        else Normal
 
   in ins $
     case eval_state of
-    0 -> hw_interrupt
-    1 -> case counter of
+    HW_Int -> hw_interrupt
+    Reset -> case counter of
       0 -> [ld_r, f1, f0, g11, ld_cc]
       1 -> [oe_r, ld_ta]
       2 -> [mr, g14, ld_pc]
