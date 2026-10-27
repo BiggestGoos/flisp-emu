@@ -76,12 +76,13 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) irq =
     b_calc = [oe_pc, f3, f1, f0, ld_r]
     b_store = [oe_r, ld_pc, nf]
 
-    branch_if cond = case counter of
-      4 -> b_init
-      5 -> b_calc
-      _ -> if cond
-           then b_store
-           else nop
+    branch_if cond = [
+        b_init,
+        b_calc,
+        if cond
+          then b_store
+          else nop
+      ]
 
     bitwise_and open load = [open, f2, f1, f0] ++ (if load then [ld_r] else [])
     bitwise_and' open load = (bitwise_and open load) ++ cc_nz0_
@@ -103,17 +104,20 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) irq =
     st_reg_ab open = [open, g14] ++ st_base
     st_reg_ns open = [open, g12] ++ st_base
 
-    psh_reg open = case counter of
-      4 -> [dec_sp]
-      _ -> [open, mw, g12, nf]
-    pul_reg load = case counter of
-      4 -> [load, mr, g12]
-      _ -> [inc_sp, nf]
+    psh_reg open = [
+        [dec_sp],
+        [open, mw, g12, nf]
+      ]
+    pul_reg load = [
+        [load, mr, g12],
+        [inc_sp, nf]
+      ]
 
-    exg_regs open1 load1 open2 load2 = case counter of
-      4 -> [open1, f3, f0, ld_r]
-      5 -> [load1, open2]
-      _ -> cc_rebind ++ (calc_end load2)
+    exg_regs open1 load1 open2 load2 = [
+        [open1, f3, f0, ld_r],
+        [load1, open2],
+        cc_rebind ++ (calc_end load2)
+      ]
 
     hw_interrupt = case counter of
       3  -> [irq_start, dec_sp, clr_t]
@@ -126,214 +130,316 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) irq =
       10 -> [oe_r, ld_ta]
       _  -> [mr, g14, ld_pc, nf, irq_ack]
 
-    sw_interrupt = case counter of
-      4  -> [dec_sp]
-      5  -> [oe_pc, dec_sp, mw, g12]
-      6  -> [oe_y, dec_sp, mw, g12]
-      7  -> [oe_x, dec_sp, mw, g12]
-      8  -> [oe_a, dec_sp, mw, g12]
-      9  -> [oe_cc, mw, g12, g11, g9, g8, g7, g6, g5, g4, g3, g2, ld_cc]
-      10 -> [ld_r, f1]
-      11 -> [oe_r, ld_ta]
-      _  -> [mr, g14, ld_pc, nf]
+    sw_interrupt = [
+        [dec_sp],
+        [oe_pc, dec_sp, mw, g12],
+        [oe_y, dec_sp, mw, g12],
+        [oe_x, dec_sp, mw, g12],
+        [oe_a, dec_sp, mw, g12],
+        [oe_cc, mw, g12, g11, g9, g8, g7, g6, g5, g4, g3, g2, ld_cc],
+        [ld_r, f1],
+        [oe_r, ld_ta],
+        [mr, g14, ld_pc, nf]
+      ]
+
+    fetch_phase = 3
+    exec_phase = fetch_phase + 1
 
     eval_state :: CurrentState
     eval_state =
-      if (irq == Just Bit.One && counter == 3 && i == Bit.Zero) || irq == Nothing
+      if (irq == Just Bit.One && counter == fetch_phase && i == Bit.Zero) || irq == Nothing
       then HW_Int
       else
         if counter <= 3
         then Reset
         else Normal
 
-  in ins $
-    case eval_state of
+    ins_index = counter - exec_phase
+
+  in ins $ case eval_state of
     HW_Int -> hw_interrupt
     Reset -> case counter of
       0 -> [ld_r, f1, f0, g11, ld_cc]
       1 -> [oe_r, ld_ta]
       2 -> [mr, g14, ld_pc]
       _ -> [mr, ld_i, inc_pc, clr_t]
-    _ -> case instruction of
-      0x00 -> nop
-      0x01 -> case counter of
-          4 -> im_init ld_t
-          5 -> bitwise_and oe_cc True
-          _ -> cc_rebind' ++ (calc_end ld_cc)
-      0x02 -> case counter of
-          4 -> im_init ld_t
-          5 -> bitwise_or oe_cc
-          _ -> cc_rebind' ++ (calc_end ld_cc)
-      0x05 -> case counter of
-          4 -> [ld_r, ld_cc]
-          _ -> calc_end ld_a
-      0x07 -> case counter of
-          4 -> inc_calc oe_a
-          _ -> calc_end ld_a
-      0x08 -> case counter of
-          4 -> dec_calc oe_a
-          _ -> calc_end ld_a
-      0x09 -> (tst_calc oe_a) ++ [nf]
-      0x0b -> case counter of
-          4 -> lsl_calc oe_a
-          _ -> calc_end ld_a
-      0x0c -> case counter of
-          4 -> lsr_calc oe_a
-          _ -> calc_end ld_a
-      0x0d -> case counter of
-          4 -> rol_calc oe_a
-          _ -> calc_end ld_a
-      0x0e -> case counter of
-          4 -> ror_calc oe_a
-          _ -> calc_end ld_a
+    _ -> flip (!!) ins_index $ case instruction of
+      -- ADCA
+      0x95 -> [
+          im_init ld_t,
+          adca_calc,
+          calc_end ld_a
+        ]
+      0xa5 -> [
+          ab_init,
+          ab_snd ld_t,
+          adca_calc,
+          calc_end ld_a
+        ]
+      0xb5 -> [
+          id_init,
+          id_sp_snd ld_t,
+          adca_calc,
+          calc_end ld_a
+        ]
+      -- ADDA
+      0x96 -> [
+          im_init ld_t,
+          adda_calc,
+          calc_end ld_a
+        ]
+      0xc6 -> [
+          id_init,
+          id_x_snd ld_t,
+          adda_calc,
+          calc_end ld_a
+        ]
+      -- ANDA
+      0x99 -> [
+          im_init ld_t,
+          bitwise_and' oe_a True,
+          calc_end ld_a
+        ]
+      -- ANDCC
+      0x01 -> [
+          im_init ld_t,
+          bitwise_and oe_cc True,
+          cc_rebind' ++ (calc_end ld_cc)
+        ]
+      -- ASL
+      0x0b -> [
+          lsl_calc oe_a,
+          calc_end ld_a
+        ]
+      -- ASR
+      -- BCC
+      0x29 -> branch_if (c == Bit.Zero)
+      -- BCS
+      0x28 -> branch_if (c == Bit.One)
+      -- BEQ
+      0x24 -> branch_if (z == Bit.One)
+      -- BGE
+      -- BGT
+      0x2c -> branch_if (((n `Bit.xor` v) `Bit.or` z) == Bit.Zero)
+      -- BHS (=BCC)
+      -- BHI
+      0x2a -> branch_if ((c `Bit.or` z) == Bit.Zero)
+      -- BLO (=BCS)
+      -- BITA
+      0x98 -> [
+          im_init ld_t,
+          (bitwise_and' oe_a False) ++ [nf]
+        ]
+      -- BLE
+      -- BLS
+      -- BLT
+      -- BMI
+      0x22 -> branch_if (n == Bit.One)
+      -- BNE
+      0x25 -> branch_if (z == Bit.Zero)
+      -- BPL
+      -- BRA
+      0x21 -> branch_if True
+      -- BSR
+      0x20 -> [
+          dec_sp:b_init,
+          clr_t:b_calc,
+          [oe_pc, mw, g12],
+          b_store
+        ]
+      -- BVC
+      -- BVS
+      -- CLR
+      0x05 -> [
+          [ld_r, ld_cc],
+          calc_end ld_a
+        ]
+      -- CMP
+      0x97 -> [
+          im_init ld_t,
+          nf:(cmp_calc oe_a)
+        ]
+      0x9c -> [
+          im_init ld_t,
+          nf:(cmp_calc oe_x)
+        ]
+      -- COM
+      -- DEC
+      0x08 -> [
+          dec_calc oe_a,
+          calc_end ld_a
+        ]
+      0x38 -> [
+          ab_init,
+          g14:(dec_calc mr),
+          g14:(calc_end mw)
+        ]
+      0x48 -> [
+          im_init ld_t,
+          g12:(dec_calc mr),
+          g12:(calc_end mw)
+        ]
+      -- EOR
+      -- EXG
+      0x9f -> exg_regs oe_a ld_a oe_cc ld_cc
+      -- INC
+      0x07 -> [
+          inc_calc oe_a,
+          calc_end ld_a
+        ]
+      0x37 -> [
+          ab_init,
+          g14:(inc_calc mr),
+          g14:(calc_end mw)
+        ]
+      -- JMP
+      0x33 -> [[ld_pc, mr, nf]]
+      -- JSR
+      0x34 -> [
+          [dec_sp, oe_pc, ld_r, f3, f0, g0],
+          [oe_r, mw, g12],
+          [mr, ld_pc, nf]
+        ]
+      -- LD
+      0xf0 -> [ld_reg_im ld_a]
+      0xf1 -> [
+          ab_init,
+          ld_reg_ab ld_a
+        ]
+      0xf2 -> [
+          id_init,
+          ld_reg_ns ld_a
+        ]
+      0xf3 -> [
+          id_init,
+          ld_reg_nx ld_a
+        ]
+      0xf4 -> [
+          aid_init,
+          ld_reg_ax ld_a
+        ]
+      0x90 -> [ld_reg_im ld_x]
+      0xa0 -> [
+          ab_init,
+          ld_reg_ab ld_x
+        ]
+      0xb0 -> [
+          id_init,
+          ld_reg_ns ld_x
+        ]
+      0x92 -> [ld_reg_im ld_sp]
+      0xb2 -> [
+          id_init,
+          ld_reg_ns ld_sp
+        ]
+      0xc2 -> [
+          im_init ld_t,
+          ld_reg_nx ld_sp
+        ]
+      -- LEA
+      0xcc -> [
+          im_init ld_t,
+          add_calc oe_x,
+          calc_end ld_x
+        ]
+      0xdc -> [
+          im_init ld_t,
+          add_calc oe_sp,
+          calc_end ld_x
+        ]
+      0xbe -> [
+          im_init ld_t,
+          add_calc oe_sp,
+          calc_end ld_sp
+        ]
+      -- LSL (=ASL)
+      -- LSR
+      0x0c -> [
+          lsr_calc oe_a,
+          calc_end ld_a
+        ]
+      0x4c -> [
+          im_init ld_t,
+          g12:(lsr_calc mr),
+          g12:(calc_end mw)
+        ]
+      -- NEG
+      -- NOP
+      0x00 -> [nop]
+      -- ORA
+      0xba -> [
+          im_init ld_t,
+          id_sp_snd ld_t,
+          bitwise_or' oe_a,
+          calc_end ld_a
+        ]
+      -- ORCC
+      0x02 -> [
+          im_init ld_t,
+          bitwise_or oe_cc,
+          cc_rebind' ++ (calc_end ld_cc)
+        ]
+      -- PSH
       0x10 -> psh_reg oe_a
       0x11 -> psh_reg oe_x
       0x13 -> psh_reg oe_cc
+      -- PUL
       0x14 -> pul_reg ld_a
       0x15 -> pul_reg ld_x
-      0x17 -> case counter of
-          4 -> [mr, g12] ++ cc_rebind
-          _ -> [inc_sp, nf]
-      0x20 -> case counter of
-          4 -> dec_sp:b_init
-          5 -> clr_t:b_calc
-          6 -> [oe_pc, mw, g12]
-          _ -> b_store
-      0x21 -> branch_if True
-      0x22 -> branch_if (n == Bit.One)
-      0x24 -> branch_if (z == Bit.One)
-      0x25 -> branch_if (z == Bit.Zero)
-      0x28 -> branch_if (c == Bit.One)
-      0x29 -> branch_if (c == Bit.Zero)
-      0x2c -> branch_if (((n `Bit.xor` v) `Bit.or` z) == Bit.Zero)
-      0x2a -> branch_if ((c `Bit.or` z) == Bit.Zero)
-      0x33 -> [ld_pc, mr, nf]
-      0x34 -> case counter of
-          4 -> [dec_sp, oe_pc, ld_r, f3, f0, g0]
-          5 -> [oe_r, mw, g12]
-          _ -> [mr, ld_pc, nf]
-      0x37 -> case counter of
-          4 -> ab_init
-          5 -> g14:(inc_calc mr)
-          _ -> g14:(calc_end mw)
-      0x38 -> case counter of
-          4 -> ab_init
-          5 -> g14:(dec_calc mr)
-          _ -> g14:(calc_end mw)
-      0x43 -> [inc_sp, mr, g12, ld_pc, nf]
-      0x44 -> case counter of
-          4 -> [mr, g12, inc_sp] ++ cc_rebind'
-          5 -> [mr, g12, inc_sp, ld_a]
-          6 -> [mr, g12, inc_sp, ld_x]
-          7 -> [mr, g12, inc_sp, ld_y]
-          _ -> [mr, g12, inc_sp, ld_pc, nf]
-      0x48 -> case counter of
-          4 -> im_init ld_t
-          5 -> g12:(dec_calc mr)
-          _ -> g12:(calc_end mw)
-      0x4c -> case counter of
-          4 -> im_init ld_t
-          5 -> g12:(lsr_calc mr)
-          _ -> g12:(calc_end mw)
-      0x4d -> case counter of
-          4 -> im_init ld_t
-          5 -> g12:(rol_calc mr)
-          _ -> g12:(calc_end mw)
-      0x69 -> case counter of
-          4 -> aid_init
-          _ -> g13:g12:(tst_calc mr) ++ [nf]
-      0x90 -> ld_reg_im ld_x
-      0x92 -> ld_reg_im ld_sp
-      0x94 -> case counter of
-          4 -> im_init ld_t
-          5 -> suba_calc
-          _ -> calc_end ld_a
-      0x95 -> case counter of
-          4 -> im_init ld_t
-          5 -> adca_calc
-          _ -> calc_end ld_a
-      0x96 -> case counter of
-          4 -> im_init ld_t
-          5 -> adda_calc
-          _ -> calc_end ld_a
-      0x97 -> case counter of
-          4 -> im_init ld_t
-          _ -> nf:(cmp_calc oe_a)
-      0x98 -> case counter of
-          4 -> im_init ld_t
-          _ -> (bitwise_and' oe_a False) ++ [nf]
-      0x99 -> case counter of
-          4 -> im_init ld_t
-          5 -> (bitwise_and' oe_a True)
-          _ -> calc_end ld_a
-      0x9c -> case counter of
-          4 -> im_init ld_t
-          _ -> nf:(cmp_calc oe_x)
-      0x9f -> exg_regs oe_a ld_a oe_cc ld_cc
-      0xa0 -> case counter of
-          4 -> ab_init
-          _ -> ld_reg_ab ld_x
-      0xa5 -> case counter of
-          4 -> ab_init
-          5 -> ab_snd ld_t
-          6 -> adca_calc
-          _ -> calc_end ld_a
-      0xb0 -> case counter of
-          4 -> id_init
-          _ -> ld_reg_ns ld_x
-      0xb2 -> case counter of
-          4 -> id_init
-          _ -> ld_reg_ns ld_sp
-      0xb5 -> case counter of
-          4 -> id_init
-          5 -> id_sp_snd ld_t
-          6 -> adca_calc
-          _ -> calc_end ld_a
-      0xba -> case counter of
-          4 -> im_init ld_t
-          5 -> id_sp_snd ld_t
-          6 -> bitwise_or' oe_a
-          _ -> calc_end ld_a
-      0xbe -> case counter of
-          4 -> im_init ld_t
-          5 -> add_calc oe_sp
-          _ -> calc_end ld_sp
-      0xc2 -> case counter of
-          4 -> im_init ld_t
-          _ -> ld_reg_nx ld_sp
-      0xc6 -> case counter of
-          4 -> id_init
-          5 -> id_x_snd ld_t
-          6 -> adda_calc
-          _ -> calc_end ld_a
-      0xcc -> case counter of
-          4 -> im_init ld_t
-          5 -> add_calc oe_x
-          _ -> calc_end ld_x
-      0xdc -> case counter of
-          4 -> im_init ld_t
-          5 -> add_calc oe_sp
-          _ -> calc_end ld_x
-      0xe1 -> case counter of
-          4 -> ab_init
-          _ -> st_reg_ab oe_a
-      0xe2 -> case counter of
-          4 -> id_init
-          _ -> st_reg_ns oe_a
-      0xf0 -> ld_reg_im ld_a
-      0xf1 -> case counter of
-          4 -> ab_init
-          _ -> ld_reg_ab ld_a
-      0xf2 -> case counter of
-          4 -> id_init
-          _ -> ld_reg_ns ld_a
-      0xf3 -> case counter of
-          4 -> id_init
-          _ -> ld_reg_nx ld_a
-      0xf4 -> case counter of
-          4 -> aid_init
-          _ -> ld_reg_ax ld_a
+      0x17 -> [
+          [mr, g12] ++ cc_rebind,
+          [inc_sp, nf]
+        ]
+      -- ROL
+      0x0d -> [
+          rol_calc oe_a,
+          calc_end ld_a
+        ]
+      0x4d -> [
+          im_init ld_t,
+          g12:(rol_calc mr),
+          g12:(calc_end mw)
+        ]
+      -- ROR
+      0x0e -> [
+          ror_calc oe_a,
+          calc_end ld_a
+        ]
+      -- RTS
+      0x43 -> [[inc_sp, mr, g12, ld_pc, nf]]
+      -- RTI
+      0x44 -> [
+          [mr, g12, inc_sp] ++ cc_rebind',
+          [mr, g12, inc_sp, ld_a],
+          [mr, g12, inc_sp, ld_x],
+          [mr, g12, inc_sp, ld_y],
+          [mr, g12, inc_sp, ld_pc, nf]
+        ]
+      -- SBCA
+      -- ST
+      0xe1 -> [
+          ab_init,
+          st_reg_ab oe_a
+        ]
+      0xe2 -> [
+          id_init,
+          st_reg_ns oe_a
+        ]
+      -- SUBA
+      0x94 -> [
+          im_init ld_t,
+          suba_calc,
+          calc_end ld_a
+        ]
+      -- TFR
+      -- TST
+      0x09 -> [(tst_calc oe_a) ++ [nf]]
+      0x69 -> [
+          aid_init,
+          g13:g12:(tst_calc mr) ++ [nf]
+        ]
 
+      -- Undefined
       0x03 -> sw_interrupt
       0x04 -> sw_interrupt
       0xdf -> sw_interrupt
@@ -341,4 +447,5 @@ create (Counter.Counter q3 q2 q1 q0) reg_i (Byte.Byte _ _ _ i n z v c) irq =
       0xef -> sw_interrupt
       0xff -> sw_interrupt
 
+      -- Temporary
       _    -> error $ "Instruction " ++ (showHex instruction "") ++ " is not implemented!" -- This should throw an interrupt, this is temporary:
